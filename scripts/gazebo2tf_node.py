@@ -31,6 +31,8 @@ def on_link_state_msg(linkStatesMsg):
     print('%d: name=%s: pose=\n%s' % (index, name, pose))
     (parentName, modelName, linkName) = splitName(name)
     print('parentName=%s modelName=%s linkName=%s' % (parentName, modelName, linkName))
+    # TODO make sure the tupel (tfFromName, tfToName) is always unique!
+    # Either use long (fully(?) prefixed) names here, or make sure that models (i.e. SDF files) are unique in the above sense
     if isBaseLinkName(linkName, modelName):
       tfFromName=parentName
       tfToName=modelName
