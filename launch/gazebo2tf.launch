@@ -1,0 +1,6 @@
+<launch>
+  <node name="static_transform_publisher" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0  0 0 0 1 gazebo_world world_link" />
+  <node name="gazebo2tf" pkg="gazebo2tf" type="gazebo2tf">
+    <param name="ignore_models" value="['lwr1', 'lwr2']" type="str" />
+  </node>
+</launch>
