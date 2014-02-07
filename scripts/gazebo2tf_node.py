@@ -12,6 +12,7 @@ tfBroadcaster = None
 submodelsToBeIgnored = []
 lastUpdateTime = None
 updatePeriod = 0.02
+maxResolveTrials = 2
 
 def point2Tuple(point):
   return (point.x, point.y, point.z)
@@ -60,20 +61,25 @@ def on_link_state_msg(linkStatesMsg):
     else:
       poseDict[(worldLinkName, tfToName)] = (pose, False)
       relativePose = None
-      poseResolveList.append(tfNameTuple)
+      poseResolveList.append((tfNameTuple, 0))
     poseDict[tfNameTuple] = (relativePose, True)
     #print('---')
 
   while poseResolveList:
     #print('len(poseResolveList)=%d' % (len(poseResolveList)))
-    tfNameTuple, poseResolveList = poseResolveList[0], poseResolveList[1:]
-    (tfFromName, tfToName) = tfNameTuple
+    resolveTuple, poseResolveList = poseResolveList[0], poseResolveList[1:]
+    tfNameTuple, resolveTrials = resolveTuple
+    if resolveTrials > maxResolveTrials:
+      print('Giving up to trying to resolve %s -> %s' % (tfFromName, tfToName))
+      poseDict.pop(tfNameTuple)
+      continue
+    tfFromName, tfToName = tfNameTuple
     #print('tfFromName=%s tfToName=%s' % (tfFromName, tfToName))
     wMVfromPose = poseDict.get((worldLinkName, tfFromName), None)
     wMVtoPose = poseDict.get((worldLinkName, tfToName), None)
     if not wMVfromPose or not wMVtoPose:
-      print('Could not resolve: %s' % ('FROM' if not wMVfromPose else 'TO'))
-      poseResolveList.append(tfNameTuple)
+      #print('Could not resolve %s -> %s trial=%d: %s' % (tfFromName, tfToName, resolveTrials, 'FROM' if not wMVfromPose else 'TO'))
+      poseResolveList.append((tfNameTuple, resolveTrials + 1))
     else:
       wMVfrom = pm.fromMsg(wMVfromPose[0])
       wMVto = pm.fromMsg(wMVtoPose[0])
