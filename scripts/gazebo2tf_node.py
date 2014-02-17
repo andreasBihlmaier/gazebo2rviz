@@ -6,7 +6,7 @@ from geometry_msgs.msg import Pose
 from gazebo_msgs.msg import LinkStates
 import tf_conversions.posemath as pm
 
-from gazebo2tf.model_names import *
+from gazebo2rviz.model_names import *
 
 tfBroadcaster = None
 submodelsToBeIgnored = []
@@ -20,7 +20,7 @@ def point2Tuple(point):
 def quaternion2Tuple(quaternion):
   return (quaternion.x, quaternion.y, quaternion.z, quaternion.w)
 
-def on_link_state_msg(linkStatesMsg):
+def on_link_states_msg(linkStatesMsg):
   """
   Publish tf for each model according to the following criteria:
   - If the model foo is not a composite (contains a single link), publish gazebo_world->foo
@@ -104,7 +104,7 @@ def main():
 
   global lastUpdateTime
   lastUpdateTime = rospy.get_rostime()
-  linkStateSub = rospy.Subscriber('gazebo/link_states', LinkStates, on_link_state_msg)
+  linkStatesSub = rospy.Subscriber('gazebo/link_states', LinkStates, on_link_states_msg)
 
   global tfBroadcaster
   tfBroadcaster = tf.TransformBroadcaster()

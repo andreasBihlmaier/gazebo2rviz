@@ -1,6 +1,6 @@
 <launch>
   <node name="static_tf_pub_world_to_gazebo_world" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0  0 0 0 1 gazebo_world world" />
-  <node name="gazebo2tf" pkg="gazebo2tf" type="gazebo2tf_node.py" output="screen">
+  <node name="gazebo2tf" pkg="gazebo2rviz" type="gazebo2tf_node.py" output="screen">
     <param name="ignore_submodels_of" value="" type="str" />
   </node>
 
