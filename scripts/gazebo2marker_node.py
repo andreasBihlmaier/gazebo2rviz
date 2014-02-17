@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import os
+import xml.etree.ElementTree as ET
+
 import rospy
 #import tf
 #from geometry_msgs.msg import Pose
@@ -9,14 +12,34 @@ from visualization_msgs.msg import Marker
 
 from gazebo2rviz.model_names import *
 
+
 lastUpdateTime = None
-updatePeriod = 0.1
+updatePeriod = 5
 markerPub = None
 modelDict = {} # modelName -> [(tfName1, meshPath1), ...]
+modelsPath = os.path.expanduser('~/.gazebo/models/')
 
-def loadModelFromSDF(modelName):
+
+def loadModelFromSDF(modelName, modelNamePrefix = ''):
   rospy.loginfo('Loading model: %s' % (modelName))
-  return []
+  model = []
+  modelTree = ET.parse(modelsPath + os.sep + modelName + os.sep + 'model.sdf')
+  for linkTag in modelTree.iter('link'):
+    linkName = linkTag.attrib['name']
+    if isBaseLinkName(modelName, linkName):
+      linkName = modelName
+    for meshTag in linkTag.iter('mesh'):
+      for uriTag in meshTag.findall('uri'):
+        meshPath = uriTag.text.replace('model://', 'file://' + modelsPath)
+        tfName = modelNamePrefix + linkName
+        modelPart = (tfName, meshPath)
+        print('Found: %s' % str(modelPart))
+        model.append(modelPart)
+  
+  # TODO recursion for include tag
+
+  return model
+
 
 def on_model_states_msg(modelStatesMsg):
   global lastUpdateTime
@@ -58,7 +81,8 @@ def on_model_states_msg(modelStatesMsg):
       markerMsg.header.frame_id = tfName
       markerMsg.ns = tfName
       markerMsg.mesh_resource = meshPath
-      markerPub.pub(markerMsg)
+      print('Publishing:\n' + str(markerMsg))
+      markerPub.publish(markerMsg)
 
 
 def main():
