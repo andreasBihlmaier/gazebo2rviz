@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>gazebo2tf</name>
+  <name>gazebo2rviz</name>
   <version>0.0.0</version>
-  <description>The gazebo2tf package</description>
+  <description>The gazebo2rviz package</description>
   <maintainer email="andreas.bihlmaier@gmx.de">Andreas Bihlmaier</maintainer>
   <license>MIT</license>
 
@@ -10,7 +10,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/gazebo2tf</url> -->
+  <!-- <url type="website">http://wiki.ros.org/gazebo2rviz</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
