@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 import rospy
 import tf
+from PyKDL import Frame, Rotation, Vector
 from geometry_msgs.msg import Pose
 import tf_conversions.posemath as pm
 from gazebo_msgs.msg import ModelStates
@@ -20,6 +21,15 @@ modelDict = {} # modelName -> [(tfName1, meshPose1, meshPath1), ...]
 modelsPath = os.path.expanduser('~/.gazebo/models/')
 
 
+def poseRPYList2Pose(poseRPYList):
+  poseValues = [float(val) for val in poseRPYList]
+  pose = Frame(Rotation.RPY(poseValues[3], poseValues[4], poseValues[5]),
+               Vector(poseValues[0], poseValues[1], poseValues[2]))
+  poseMsg = pm.toMsg(pose)
+  #print(poseMsg)
+  return poseMsg
+
+
 def loadModelFromSDF(modelName, modelNamePrefix = ''):
   rospy.loginfo('Loading model: %s' % (modelName))
   model = []
@@ -29,10 +39,10 @@ def loadModelFromSDF(modelName, modelNamePrefix = ''):
     if isBaseLinkName(modelName, linkName):
       linkName = modelName
     for visualTag in linkTag.iter('visual'):
+      meshPose = Pose()
       for poseTag in visualTag.iter('pose'):
         meshPoseElements = poseTag.text.split()
-        meshPose = Pose()
-        # TODO fill in meshPose from meshPoseElements
+        meshPose = poseRPYList2Pose(meshPoseElements)
       for meshTag in visualTag.iter('mesh'):
         for uriTag in meshTag.findall('uri'):
           meshPath = uriTag.text.replace('model://', 'file://' + modelsPath)
@@ -64,6 +74,9 @@ def on_model_states_msg(modelStatesMsg):
   protoMarkerMsg.color.r = 0.0
   protoMarkerMsg.color.g = 0.0
   protoMarkerMsg.color.b = 0.0
+  protoMarkerMsg.scale.x = 1.0
+  protoMarkerMsg.scale.y = 1.0
+  protoMarkerMsg.scale.z = 1.0
 
   for (index, name) in enumerate(modelStatesMsg.name):
     print('%d: name=%s\n' % (index, name))
@@ -76,17 +89,7 @@ def on_model_states_msg(modelStatesMsg):
       markerMsg.header.frame_id = tfName
       markerMsg.ns = tfName
       markerMsg.mesh_resource = meshPath
-      # TODO meshPose
-      markerMsg.pose.position.x = 0.0
-      markerMsg.pose.position.y = 0.0
-      markerMsg.pose.position.z = 0.0
-      markerMsg.pose.orientation.x = 0.0
-      markerMsg.pose.orientation.y = 0.0
-      markerMsg.pose.orientation.z = 0.0
-      markerMsg.pose.orientation.w = 1.0
-      markerMsg.scale.x = 1.0
-      markerMsg.scale.y = 1.0
-      markerMsg.scale.z = 1.0
+      markerMsg.pose = meshPose
       print('Publishing:\n' + str(markerMsg))
       markerPub.publish(markerMsg)
 
