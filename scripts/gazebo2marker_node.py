@@ -30,7 +30,8 @@ def poseRPYList2Pose(poseRPYList):
   return poseMsg
 
 
-def loadModelFromSDF(modelName, modelNamePrefix = ''):
+def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
+  # TODO respect modelTfName
   rospy.loginfo('Loading model: %s' % (modelName))
   model = []
   modelTree = ET.parse(modelsPath + os.sep + modelName + os.sep + 'model.sdf')
@@ -50,8 +51,18 @@ def loadModelFromSDF(modelName, modelNamePrefix = ''):
           modelPart = (tfName, meshPose, meshPath)
           print('Found: %s' % str(modelPart))
           model.append(modelPart)
-  
-  # TODO recursion for include tag
+
+  for includeTag in modelTree.iter('include'):
+    uriTag = includeTag.findall('uri')[0]
+    includedModelName = uriTag.text.replace('model://', '')
+    sdfPath = uriTag.text.replace('model://', 'file://' + modelsPath)
+    nameTagList = includeTag.findall('name')
+    if nameTagList:
+      includedTfName = nameTagList[0].text
+    else:
+      includedTfName = includedModelName
+    prefix = modelName + joinString
+    model.extend(loadModelFromSDF(includedModelName, prefix, includedTfName))
 
   return model
 
