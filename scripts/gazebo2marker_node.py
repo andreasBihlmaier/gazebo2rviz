@@ -100,21 +100,21 @@ def on_model_states_msg(modelStatesMsg):
   previousModelSet = set(previousModels)
   #addedModelSet = currentModelSet.difference(previousModelSet)
   addedModelSet = currentModelSet
-  print('addedModelSet=%s' % str(addedModelSet))
+  #print('addedModelSet=%s' % str(addedModelSet))
   for (index, name) in enumerate(addedModelSet):
-    print('%d: name=%s\n' % (index, name))
+    #print('%d: name=%s\n' % (index, name))
     modelName = name2modelName(name)
     if not name in modelDict:
-      modelDict[modelName] = loadModelFromSDF(modelName, '', name)
+      modelDict[name] = loadModelFromSDF(modelName, '', name)
 
-    for modelPart in modelDict[modelName]:
+    for modelPart in modelDict[name]:
       tfName, meshPose, meshPath = modelPart
       markerMsg = protoMarkerMsg
       markerMsg.header.frame_id = tfName
       markerMsg.ns = tfName
       markerMsg.mesh_resource = meshPath
       markerMsg.pose = meshPose
-      print('Publishing ADD:\n' + str(markerMsg))
+      #print('Publishing ADD:\n' + str(markerMsg))
       markerPub.publish(markerMsg)
 
   #deletedModelSet = previousModelSet.difference(currentModelSet)
@@ -124,7 +124,7 @@ def on_model_states_msg(modelStatesMsg):
   #protoRmMarkerMsg.action = Marker.DELETE
   #for deletedName in deletedModelSet:
   #  deletedModelName = name2modelName(deletedName)
-  #  for modelPart in modelDict[deletedModelName]:
+  #  for modelPart in modelDict[deletedName]:
   #    tfName, meshPose, meshPath = modelPart
   #    rmMarkerMsg = protoRmMarkerMsg
   #    rmMarkerMsg.header.frame_id = tfName
