@@ -3,8 +3,4 @@
   <node name="gazebo2tf" pkg="gazebo2rviz" type="gazebo2tf_node.py" output="screen">
     <param name="ignore_submodels_of" value="" type="str" />
   </node>
-
-  <!-- must published modelName (e.g. lwr1) to modelWorldLinkName (e.g. lwr1_world_link) -->
-  <node name="static_tf_pub_lwr1_to_lwr1_world_link" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0  0 0 0 1 lwr1_world_link lwr1" />
-  <node name="static_tf_pub_lwr2_to_lwr2_world_link" pkg="tf2_ros" type="static_transform_publisher" args="0 0 0  0 0 0 1 lwr2_world_link lwr1" />
 </launch>

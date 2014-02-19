@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find gazebo2rviz)/launch/gazebo2tf.launch" />
+  <include file="$(find gazebo2rviz)/launch/gazebo2marker.launch" />
+</launch>

@@ -1,0 +1,5 @@
+<launch>
+  <node name="gazebo2marker" pkg="gazebo2rviz" type="gazebo2marker_node.py" output="screen">
+    <param name="ignore_submodels_of" value="" type="str" />
+  </node>
+</launch>
