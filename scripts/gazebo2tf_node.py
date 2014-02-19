@@ -43,7 +43,7 @@ def on_link_states_msg(linkStatesMsg):
     #print('%d: name=%s: pose=\n%s' % (index, name, pose))
     (parentName, modelName, linkName) = splitName(name)
     #print('parentName=%s modelName=%s linkName=%s' % (parentName, modelName, linkName))
-    if isBaseLinkName(modelName, linkName):
+    if isBaseLinkName(name2modelName(modelName), linkName):
       tfFromName=prefixName(name, parentName)
       tfToName=prefixName(name, modelName)
     else:
@@ -102,12 +102,12 @@ def main():
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
 
+  global tfBroadcaster
+  tfBroadcaster = tf.TransformBroadcaster()
+
   global lastUpdateTime
   lastUpdateTime = rospy.get_rostime()
   linkStatesSub = rospy.Subscriber('gazebo/link_states', LinkStates, on_link_states_msg)
-
-  global tfBroadcaster
-  tfBroadcaster = tf.TransformBroadcaster()
 
   rospy.loginfo('Spinning')
   rospy.spin()

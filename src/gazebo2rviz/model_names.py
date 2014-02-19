@@ -1,3 +1,5 @@
+import re
+
 worldLinkName = 'gazebo_world'
 baseLinkNames = ['link', 'base', 'world_link']
 baseLinkNameEndings = ['_base', '_world_link']
@@ -36,3 +38,8 @@ def prefixName(name, part):
       break
 
   return res
+
+
+def name2modelName(name):
+ # Cope with adding the same model multiple times through the GUI
+ return re.sub('_[0-9]*$', '', name)

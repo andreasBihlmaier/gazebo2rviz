@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
-# TODO
-# - delete marker if object vanishes from gazebo
-
 import os
 import xml.etree.ElementTree as ET
-import re
 
 import rospy
 import tf
@@ -19,10 +15,12 @@ from gazebo2rviz.model_names import *
 
 
 lastUpdateTime = None
-updatePeriod = 5
+updatePeriod = 0.5
 markerPub = None
+previousModels = []
 modelDict = {} # modelName -> [(tfName1, meshPose1, meshPath1), ...]
 modelsPath = os.path.expanduser('~/.gazebo/models/')
+
 
 
 def poseRPYList2Pose(poseRPYList):
@@ -87,6 +85,7 @@ def on_model_states_msg(modelStatesMsg):
   protoMarkerMsg.id = 0
   protoMarkerMsg.type = Marker.MESH_RESOURCE
   protoMarkerMsg.action = Marker.ADD
+  protoMarkerMsg.lifetime = rospy.Duration(2 * updatePeriod)
   protoMarkerMsg.mesh_use_embedded_materials = True
   protoMarkerMsg.color.a = 0.0
   protoMarkerMsg.color.r = 0.0
@@ -96,21 +95,44 @@ def on_model_states_msg(modelStatesMsg):
   protoMarkerMsg.scale.y = 1.0
   protoMarkerMsg.scale.z = 1.0
 
-  for (index, name) in enumerate(modelStatesMsg.name):
+  currentModelSet = set(modelStatesMsg.name)
+  global previousModels
+  previousModelSet = set(previousModels)
+  #addedModelSet = currentModelSet.difference(previousModelSet)
+  addedModelSet = currentModelSet
+  print('addedModelSet=%s' % str(addedModelSet))
+  for (index, name) in enumerate(addedModelSet):
     print('%d: name=%s\n' % (index, name))
+    modelName = name2modelName(name)
     if not name in modelDict:
-      modelName = re.sub('_[0-9]*$', '', name)
-      modelDict[name] = loadModelFromSDF(modelName, '', name)
+      modelDict[modelName] = loadModelFromSDF(modelName, '', name)
 
-    for modelPart in modelDict[name]:
+    for modelPart in modelDict[modelName]:
       tfName, meshPose, meshPath = modelPart
       markerMsg = protoMarkerMsg
       markerMsg.header.frame_id = tfName
       markerMsg.ns = tfName
       markerMsg.mesh_resource = meshPath
       markerMsg.pose = meshPose
-      print('Publishing:\n' + str(markerMsg))
+      print('Publishing ADD:\n' + str(markerMsg))
       markerPub.publish(markerMsg)
+
+  #deletedModelSet = previousModelSet.difference(currentModelSet)
+  #protoRmMarkerMsg = Marker()
+  #protoRmMarkerMsg.header.stamp = rospy.get_rostime()
+  #protoRmMarkerMsg.id = 0
+  #protoRmMarkerMsg.action = Marker.DELETE
+  #for deletedName in deletedModelSet:
+  #  deletedModelName = name2modelName(deletedName)
+  #  for modelPart in modelDict[deletedModelName]:
+  #    tfName, meshPose, meshPath = modelPart
+  #    rmMarkerMsg = protoRmMarkerMsg
+  #    rmMarkerMsg.header.frame_id = tfName
+  #    rmMarkerMsg.ns = tfName
+  #    print('Publishing DELETE:\n' + str(rmMarkerMsg))
+  #    markerPub.publish(rmMarkerMsg)
+
+  previousModels = modelStatesMsg.name
 
 
 def main():
@@ -120,12 +142,13 @@ def main():
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
 
+  global markerPub
+  markerPub = rospy.Publisher('/visualization_marker', Marker)
+  rospy.sleep(rospy.Duration(0, 100 * 1000))
+
   global lastUpdateTime
   lastUpdateTime = rospy.get_rostime()
   modelStatesSub = rospy.Subscriber('gazebo/model_states', ModelStates, on_model_states_msg)
-
-  global markerPub
-  markerPub = rospy.Publisher('/visualization_marker', Marker)
 
   rospy.loginfo('Spinning')
   rospy.spin()
