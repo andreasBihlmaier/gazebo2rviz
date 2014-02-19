@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
+# TODO
+# - delete marker if object vanishes from gazebo
+
 import os
 import xml.etree.ElementTree as ET
+import re
 
 import rospy
 import tf
@@ -31,14 +35,17 @@ def poseRPYList2Pose(poseRPYList):
 
 
 def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
-  # TODO respect modelTfName
-  rospy.loginfo('Loading model: %s' % (modelName))
+  rospy.loginfo('Loading model: modelName=%s modelNamePrefix=%s modelTfName=%s' % (modelName, modelNamePrefix, modelTfName))
+  if not modelTfName:
+    modelTfName = modelName
   model = []
   modelTree = ET.parse(modelsPath + os.sep + modelName + os.sep + 'model.sdf')
   for linkTag in modelTree.iter('link'):
-    linkName = linkTag.attrib['name']
-    if isBaseLinkName(modelName, linkName):
-      linkName = modelName
+    rawLinkName = linkTag.attrib['name']
+    if isBaseLinkName(modelName, rawLinkName):
+      linkName = modelTfName
+    else:
+      linkName = modelTfName + joinString + rawLinkName
     for visualTag in linkTag.iter('visual'):
       meshPose = Pose()
       for poseTag in visualTag.iter('pose'):
@@ -49,7 +56,7 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
           meshPath = uriTag.text.replace('model://', 'file://' + modelsPath)
           tfName = modelNamePrefix + linkName
           modelPart = (tfName, meshPose, meshPath)
-          print('Found: %s' % str(modelPart))
+          rospy.loginfo('Found: tfName=%s meshPath=%s' % (tfName, meshPath))
           model.append(modelPart)
 
   for includeTag in modelTree.iter('include'):
@@ -61,7 +68,7 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
       includedTfName = nameTagList[0].text
     else:
       includedTfName = includedModelName
-    prefix = modelName + joinString
+    prefix = modelNamePrefix + modelTfName + joinString
     model.extend(loadModelFromSDF(includedModelName, prefix, includedTfName))
 
   return model
@@ -92,7 +99,8 @@ def on_model_states_msg(modelStatesMsg):
   for (index, name) in enumerate(modelStatesMsg.name):
     print('%d: name=%s\n' % (index, name))
     if not name in modelDict:
-      modelDict[name] = loadModelFromSDF(name)
+      modelName = re.sub('_[0-9]*$', '', name)
+      modelDict[name] = loadModelFromSDF(modelName, '', name)
 
     for modelPart in modelDict[name]:
       tfName, meshPose, meshPath = modelPart
