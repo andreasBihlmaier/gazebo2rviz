@@ -38,7 +38,7 @@ def publishMarkers():
     markerMsg.ns = tfName
     markerMsg.mesh_resource = meshPath
     markerMsg.pose = meshPose
-    print('Publishing:\n' + str(markerMsg))
+    #print('Publishing:\n' + str(markerMsg))
     markerPub.publish(markerMsg)
 
 
