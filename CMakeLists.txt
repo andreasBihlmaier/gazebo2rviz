@@ -124,6 +124,7 @@ include_directories(
 install(PROGRAMS
   scripts/gazebo2tf_node.py
   scripts/gazebo2marker_node.py
+  scripts/sdf2marker_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
