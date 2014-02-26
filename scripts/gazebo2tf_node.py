@@ -28,7 +28,7 @@ def on_link_states_msg(linkStatesMsg):
 
   All models must follow the rules that
   - All links must be named 'link' or have the suffix '_link'
-  - Each (sub)model FOO contains a link with exactly one of the names: link, FOO_link, base, *_base, world_link, *_world_link
+  - Each (sub)model FOO contains a link with exactly one of the names: link, FOO_link, base, base_link, *_base, *_base_link, world_link, *_world_link
   """
   global lastUpdateTime
   sinceLastUpdateDuration = rospy.get_rostime() - lastUpdateTime

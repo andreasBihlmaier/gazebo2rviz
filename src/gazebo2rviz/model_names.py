@@ -1,8 +1,8 @@
 import re
 
 worldLinkName = 'gazebo_world'
-baseLinkNames = ['link', 'base', 'world_link']
-baseLinkNameEndings = ['_base', '_world_link']
+baseLinkNames = ['link', 'base', 'base_link', 'world_link']
+baseLinkNameEndings = ['_base', '_base_link', '_world_link']
 splitString = '::'
 joinString = '__'
 
