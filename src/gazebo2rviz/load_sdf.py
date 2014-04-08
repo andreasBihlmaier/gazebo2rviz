@@ -28,7 +28,12 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
   if not modelTfName:
     modelTfName = modelName
   model = []
-  modelTree = ET.parse(modelsPath + os.sep + modelName + os.sep + 'model.sdf')
+  try:
+    modelTree = ET.parse(modelsPath + os.sep + modelName + os.sep + 'model.sdf')
+  except IOError as e:
+    print e
+    return []
+
   for linkTag in modelTree.iter('link'):
     rawLinkName = linkTag.attrib['name']
     if isBaseLinkName(modelName, rawLinkName):
