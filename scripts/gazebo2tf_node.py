@@ -42,7 +42,7 @@ def on_link_states_msg(linkStatesMsg):
     pose = linkStatesMsg.pose[index]
     #print('%d: name=%s: pose=\n%s' % (index, name, pose))
     (parentName, modelName, linkName) = splitName(name)
-    #print('parentName=%s modelName=%s linkName=%s' % (parentName, modelName, linkName))
+    #print('parentName=%s modelName=%s name2modelName=%s linkName=%s' % (parentName, modelName, name2modelName(modelName), linkName))
     if isBaseLinkName(name2modelName(modelName), linkName):
       tfFromName=prefixName(name, parentName)
       tfToName=prefixName(name, modelName)
