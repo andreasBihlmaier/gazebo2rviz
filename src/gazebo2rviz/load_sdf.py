@@ -24,7 +24,7 @@ def poseRPYList2Pose(poseRPYList):
 
 
 def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = '', absPose = poseRPYList2Pose('0 0 0  0 0 0'.split())):
-  rospy.loginfo('Loading model: modelName=%s modelNamePrefix=%s modelTfName=%s' % (modelName, modelNamePrefix, modelTfName))
+  #rospy.loginfo('Loading model: modelName=%s modelNamePrefix=%s modelTfName=%s' % (modelName, modelNamePrefix, modelTfName))
   if not modelTfName:
     modelTfName = modelName
   model = []
@@ -57,7 +57,7 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = '', absPose 
       for meshTag in visualTag.iter('mesh'):
         for uriTag in meshTag.findall('uri'):
           modelPart['mesh_path'] = uriTag.text.replace('model://', 'file://' + modelsPath)
-          rospy.loginfo('Found: tf_name=%s mesh_path=%s' % (modelPart['tf_name'], modelPart['mesh_path']))
+    #rospy.loginfo('Found: %s' % ' '.join(str(modelPart).split()))
     model.append(modelPart)
 
   for includeTag in modelTree.iter('include'):
