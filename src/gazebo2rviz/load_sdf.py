@@ -23,7 +23,7 @@ def poseRPYList2Pose(poseRPYList):
   return poseMsg
 
 
-def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
+def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = '', absPose = poseRPYList2Pose('0 0 0  0 0 0'.split())):
   rospy.loginfo('Loading model: modelName=%s modelNamePrefix=%s modelTfName=%s' % (modelName, modelNamePrefix, modelTfName))
   if not modelTfName:
     modelTfName = modelName
@@ -34,24 +34,31 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
     print e
     return []
 
+  absPoseTf = pm.fromMsg(absPose)
+
   for linkTag in modelTree.iter('link'):
     rawLinkName = linkTag.attrib['name']
+    modelPart = {}
     if isBaseLinkName(modelName, rawLinkName):
       linkName = modelTfName
     else:
       linkName = modelTfName + joinString + rawLinkName
+    modelPart['tf_name'] = modelNamePrefix + linkName
+    modelPart['link_pose'] = poseRPYList2Pose('0 0 0 0 0 0'.split())
+    for linkPoseTag in linkTag.findall('pose'):
+      linkPoseElements = linkPoseTag.text.split()
+      modelPart['link_pose'] = poseRPYList2Pose(linkPoseElements)
+    modelPart['link_pose'] = pm.toMsg(absPoseTf * pm.fromMsg(modelPart['link_pose']))
     for visualTag in linkTag.iter('visual'):
-      meshPose = Pose()
+      modelPart['mesh_pose'] = Pose()
       for poseTag in visualTag.iter('pose'):
         meshPoseElements = poseTag.text.split()
-        meshPose = poseRPYList2Pose(meshPoseElements)
+        modelPart['mesh_pose'] = poseRPYList2Pose(meshPoseElements)
       for meshTag in visualTag.iter('mesh'):
         for uriTag in meshTag.findall('uri'):
-          meshPath = uriTag.text.replace('model://', 'file://' + modelsPath)
-          tfName = modelNamePrefix + linkName
-          modelPart = (tfName, meshPose, meshPath)
-          rospy.loginfo('Found: tfName=%s meshPath=%s' % (tfName, meshPath))
-          model.append(modelPart)
+          modelPart['mesh_path'] = uriTag.text.replace('model://', 'file://' + modelsPath)
+          rospy.loginfo('Found: tf_name=%s mesh_path=%s' % (modelPart['tf_name'], modelPart['mesh_path']))
+    model.append(modelPart)
 
   for includeTag in modelTree.iter('include'):
     uriTag = includeTag.findall('uri')[0]
@@ -62,7 +69,17 @@ def loadModelFromSDF(modelName, modelNamePrefix = '', modelTfName = ''):
       includedTfName = nameTagList[0].text
     else:
       includedTfName = includedModelName
+    include_pose = absPose
+    for includePoseTag in includeTag.findall('pose'):
+      include_pose = pm.toMsg(absPoseTf * pm.fromMsg(poseRPYList2Pose(includePoseTag.text.split())))
     prefix = modelNamePrefix + modelTfName + joinString
-    model.extend(loadModelFromSDF(includedModelName, prefix, includedTfName))
+    model.extend(loadModelFromSDF(includedModelName, prefix, includedTfName, include_pose))
 
   return model
+
+
+def point2Tuple(point):
+  return (point.x, point.y, point.z)
+
+def quaternion2Tuple(quaternion):
+  return (quaternion.x, quaternion.y, quaternion.z, quaternion.w)

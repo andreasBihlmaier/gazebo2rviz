@@ -32,7 +32,11 @@ markers = []
 
 def publishMarkers():
   for marker in markers:
-    tfName, meshPose, meshPath = marker
+    tfName = modelPart['tf_name']
+    meshPose = modelPart['mesh_pose']
+    if not 'mesh_path' in modelPart:
+      continue
+    meshPath = modelPart['mesh_path']
     markerMsg = protoMarkerMsg
     markerMsg.header.frame_id = tfName
     markerMsg.ns = tfName

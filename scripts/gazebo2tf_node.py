@@ -7,6 +7,7 @@ from gazebo_msgs.msg import LinkStates
 import tf_conversions.posemath as pm
 
 from gazebo2rviz.model_names import *
+from gazebo2rviz.load_sdf import *
 
 tfBroadcaster = None
 submodelsToBeIgnored = []
@@ -14,11 +15,6 @@ lastUpdateTime = None
 updatePeriod = 0.02
 maxResolveTrials = 2
 
-def point2Tuple(point):
-  return (point.x, point.y, point.z)
-
-def quaternion2Tuple(quaternion):
-  return (quaternion.x, quaternion.y, quaternion.z, quaternion.w)
 
 def on_link_states_msg(linkStatesMsg):
   """

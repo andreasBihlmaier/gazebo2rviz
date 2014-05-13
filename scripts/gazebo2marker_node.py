@@ -54,7 +54,11 @@ def on_model_states_msg(modelStatesMsg):
       modelDict[name] = loadModelFromSDF(modelName, '', name)
 
     for modelPart in modelDict[name]:
-      tfName, meshPose, meshPath = modelPart
+      tfName = modelPart['tf_name']
+      if not 'mesh_path' in modelPart:
+        continue
+      meshPose = modelPart['mesh_pose']
+      meshPath = modelPart['mesh_path']
       markerMsg = protoMarkerMsg
       markerMsg.header.frame_id = tfName
       markerMsg.ns = tfName
