@@ -12,6 +12,7 @@ from gazebo2rviz.model_names import *
 from gazebo2rviz.load_sdf import *
 
 
+submodelsToBeIgnored = []
 markerPub = None
 protoMarkerMsg = Marker()
 protoMarkerMsg.frame_locked = True
@@ -32,11 +33,11 @@ markers = []
 
 def publishMarkers():
   for marker in markers:
-    tfName = modelPart['tf_name']
-    meshPose = modelPart['mesh_pose']
-    if not 'mesh_path' in modelPart:
+    tfName = marker['tf_name']
+    if not 'mesh_path' in marker:
       continue
-    meshPath = modelPart['mesh_path']
+    meshPose = marker['mesh_pose']
+    meshPath = marker['mesh_path']
     markerMsg = protoMarkerMsg
     markerMsg.header.frame_id = tfName
     markerMsg.ns = tfName
@@ -52,9 +53,13 @@ def main():
   parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
   parser.add_argument('-n', '--name', help='Publish Marker under this name (default: SDF model name)')
   parser.add_argument('sdf', help='SDF model to publish (e.g. coke_can)')
-  args = parser.parse_args()
+  args = parser.parse_args(rospy.myargv()[1:])
 
   rospy.init_node('sdf2marker')
+
+  global submodelsToBeIgnored
+  submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
+  rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
 
   global protoMarkerMsg
   updatePeriod = 1. / args.freq
