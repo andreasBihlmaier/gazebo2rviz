@@ -32,7 +32,6 @@ def main():
   source_from_tf, source_to_tf = args.source_from_tf, args.source_to_tf
   target_from_tf = args.target_from_tf if args.target_from_tf else source_from_tf
   target_to_tf = args.target_to_tf if args.target_to_tf else source_to_tf
-  print('Publishing TF %s -> %s from SDF %s as TF %s -> %s' % (source_from_tf, source_to_tf, args.sdf, target_from_tf, target_to_tf))
 
   rospy.init_node('sdf2extract_tfstatic')
 
@@ -41,11 +40,11 @@ def main():
   markers = loadModelFromSDF(args.sdf)
   from_tf_pose = get_pose(markers, source_from_tf)
   if not from_tf_pose:
-    print('SDF %s does not contain source_from_tf %s' % (args.sdf, source_from_tf))
+    rospy.logerr('SDF %s does not contain source_from_tf %s' % (args.sdf, source_from_tf))
     return 1
   to_tf_pose = get_pose(markers, source_to_tf)
   if not to_tf_pose:
-    print('SDF %s does not contain source_to_tf %s' % (args.sdf, source_to_tf))
+    rospy.logerr('SDF %s does not contain source_to_tf %s' % (args.sdf, source_to_tf))
     return 1
 
   from_to_tf = pm.toMsg(pm.fromMsg(from_tf_pose).Inverse() * pm.fromMsg(to_tf_pose))
@@ -53,6 +52,7 @@ def main():
   rotation = quaternion2Tuple(from_to_tf.orientation)
 
 
+  rospy.loginfo('Publishing TF %s -> %s from SDF %s as TF %s -> %s' % (source_from_tf, source_to_tf, args.sdf, target_from_tf, target_to_tf))
   rospy.loginfo('Spinning')
   r = rospy.Rate(args.freq)
   while not rospy.is_shutdown():
