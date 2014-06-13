@@ -32,6 +32,7 @@ install(PROGRAMS
   scripts/gazebo2marker_node.py
   scripts/sdf2marker_node.py
   scripts/sdf2tfstatic_node.py
+  scripts/sdf2extract_tfstatic_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
