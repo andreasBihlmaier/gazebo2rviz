@@ -3,6 +3,7 @@ project(gazebo2rviz)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  pysdf
 )
 
 catkin_python_setup()
@@ -30,6 +31,7 @@ install(PROGRAMS
   scripts/gazebo2tf_node.py
   scripts/gazebo2marker_node.py
   scripts/sdf2marker_node.py
+  scripts/sdf2tfstatic_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
