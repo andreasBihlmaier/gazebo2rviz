@@ -4,12 +4,13 @@ Publish all visuals within a SDF file as rviz Markers
 """
 
 import argparse
+import copy
 
 import rospy
 from visualization_msgs.msg import Marker
+from tf.transformations import *
 
-from gazebo2rviz.model_names import *
-from gazebo2rviz.load_sdf import *
+import pysdf
 
 
 submodelsToBeIgnored = []
@@ -24,34 +25,42 @@ protoMarkerMsg.color.a = 0.0
 protoMarkerMsg.color.r = 0.0
 protoMarkerMsg.color.g = 0.0
 protoMarkerMsg.color.b = 0.0
-protoMarkerMsg.scale.x = 1.0
-protoMarkerMsg.scale.y = 1.0
-protoMarkerMsg.scale.z = 1.0
+world = None
 markers = []
 
 
 
+def prepare_link_marker(link, full_linkname):
+  if link.visual.geometry_type == 'mesh':
+    marker_msg = copy.deepcopy(protoMarkerMsg)
+    marker_msg.header.frame_id = full_linkname
+    marker_msg.ns = full_linkname
+    marker_msg.mesh_resource = link.visual.geometry_data['uri'].replace('model://', 'file://' + pysdf.models_path)
+    scale = (float(val) for val in link.visual.geometry_data['scale'].split())
+    marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
+    marker_msg.pose = pysdf.homogeneous2pose_msg(link.visual.pose)
+    markers.append(marker_msg)
+  # TODO other geometry_types
+
+
+def prepare_markers(prefix):
+  world.for_all_links(prepare_link_marker)
+  for marker in markers:
+    marker.header.frame_id = prefix + pysdf.sdf2tfname(marker.header.frame_id)
+    marker.ns = prefix + pysdf.sdf2tfname(marker.ns)
+
+
 def publishMarkers():
   for marker in markers:
-    tfName = marker['tf_name']
-    if not 'mesh_path' in marker:
-      continue
-    meshPose = marker['mesh_pose']
-    meshPath = marker['mesh_path']
-    markerMsg = protoMarkerMsg
-    markerMsg.header.frame_id = tfName
-    markerMsg.ns = tfName
-    markerMsg.mesh_resource = meshPath
-    markerMsg.pose = meshPose
-    #print('Publishing:\n' + str(markerMsg))
-    markerPub.publish(markerMsg)
+    print(marker)
+    markerPub.publish(marker)
 
 
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
-  parser.add_argument('-n', '--name', help='Publish Marker under this name (default: SDF model name)')
+  parser.add_argument('-p', '--prefix', default='', help='Publish with prefix')
   parser.add_argument('sdf', help='SDF model to publish (e.g. coke_can)')
   args = parser.parse_args(rospy.myargv()[1:])
 
@@ -69,9 +78,11 @@ def main():
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker)
 
-  global markers
-  markers = loadModelFromSDF(args.sdf, '', args.name)
-  #print(markers)
+  global world
+  sdf = pysdf.SDF(model=args.sdf)
+  world = sdf.world
+
+  prepare_markers(args.prefix)
 
   rospy.loginfo('Spinning')
   r = rospy.Rate(args.freq)

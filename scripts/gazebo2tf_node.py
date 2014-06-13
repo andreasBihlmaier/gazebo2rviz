@@ -6,9 +6,6 @@ from geometry_msgs.msg import Pose
 from gazebo_msgs.msg import LinkStates
 import tf_conversions.posemath as pm
 
-from gazebo2rviz.model_names import *
-from gazebo2rviz.load_sdf import *
-
 tfBroadcaster = None
 submodelsToBeIgnored = []
 lastUpdateTime = None
@@ -18,13 +15,7 @@ maxResolveTrials = 2
 
 def on_link_states_msg(linkStatesMsg):
   """
-  Publish tf for each model according to the following criteria:
-  - If the model foo is not a composite (contains a single link), publish gazebo_world->foo
-  - If the model bar is a composite (bar::{pa,pb::pba}), publish gazebo_world->bar, bar->pa, bar->pb, pb->pba
-
-  All models must follow the rules that
-  - All links must be named 'link' or have the suffix '_link'
-  - Each (sub)model FOO contains a link with exactly one of the names: link, FOO_link, base, base_link, *_base, *_base_link, world_link, *_world_link
+  Publish tf for each model in current Gazebo world
   """
   global lastUpdateTime
   sinceLastUpdateDuration = rospy.get_rostime() - lastUpdateTime

@@ -18,15 +18,11 @@ world = None
 tfs = []
 
 
-def substitute_symbols_for_tf(sdfname):
-  return sdfname.replace('::', '__').replace('@', 'AT')
-
-
 def calculate_tfs(prefix):
   world.for_all_joints(calculate_joint_tf)
   for tf in tfs:
-    tf[0] = prefix + substitute_symbols_for_tf(tf[0])
-    tf[1] = prefix + substitute_symbols_for_tf(tf[1])
+    tf[0] = prefix + pysdf.sdf2tfname(tf[0])
+    tf[1] = prefix + pysdf.sdf2tfname(tf[1])
 
 
 def calculate_joint_tf(joint, full_jointname):
@@ -45,7 +41,7 @@ def publish_tf():
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=10, help='Frequency TFs are published (default: 10 Hz)')
-  parser.add_argument('-p', '--prefix', help='Publish under this prefix name (default: SDF model name)')
+  parser.add_argument('-p', '--prefix', default='', help='Publish with prefix')
   parser.add_argument('sdf', help='SDF model to publish (e.g. coke_can)')
   args = parser.parse_args(rospy.myargv()[1:])
 
@@ -62,9 +58,7 @@ def main():
   sdf = pysdf.SDF(model=args.sdf)
   world = sdf.world
 
-  prefix = args.prefix if args.prefix else args.sdf
-
-  calculate_tfs(prefix)
+  calculate_tfs(args.prefix)
 
   rospy.loginfo('Spinning')
   r = rospy.Rate(args.freq)
