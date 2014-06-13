@@ -47,12 +47,13 @@ def main():
     rospy.logerr('SDF %s does not contain source_to_tf %s' % (args.sdf, source_to_tf))
     return 1
 
+  #rospy.loginfo('from_tf_pose:\n%s\nto_tf_pose:\n%s' % (from_tf_pose, to_tf_pose))
   from_to_tf = pm.toMsg(pm.fromMsg(from_tf_pose).Inverse() * pm.fromMsg(to_tf_pose))
   translation = point2Tuple(from_to_tf.position)
   rotation = quaternion2Tuple(from_to_tf.orientation)
 
 
-  rospy.loginfo('Publishing TF %s -> %s from SDF %s as TF %s -> %s' % (source_from_tf, source_to_tf, args.sdf, target_from_tf, target_to_tf))
+  rospy.loginfo('Publishing TF %s -> %s from SDF %s as TF %s -> %s: t=%s r=%s' % (source_from_tf, source_to_tf, args.sdf, target_from_tf, target_to_tf, translation, rotation))
   rospy.loginfo('Spinning')
   r = rospy.Rate(args.freq)
   while not rospy.is_shutdown():
