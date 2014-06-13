@@ -25,8 +25,8 @@ def substitute_symbols_for_tf(sdfname):
 def calculate_tfs(prefix):
   world.for_all_joints(calculate_joint_tf)
   for tf in tfs:
-    tf[0] = substitute_symbols_for_tf(tf[0])
-    tf[1] = substitute_symbols_for_tf(tf[1])
+    tf[0] = prefix + substitute_symbols_for_tf(tf[0])
+    tf[1] = prefix + substitute_symbols_for_tf(tf[1])
 
 
 def calculate_joint_tf(joint, full_jointname):
