@@ -52,7 +52,7 @@ def prepare_markers(prefix):
 
 def publishMarkers():
   for marker in markers:
-    print(marker)
+    #print(marker)
     markerPub.publish(marker)
 
 
