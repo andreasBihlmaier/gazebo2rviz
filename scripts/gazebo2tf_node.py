@@ -15,7 +15,6 @@ tfBroadcaster = None
 submodelsToBeIgnored = []
 lastUpdateTime = None
 updatePeriod = 0.05
-maxResolveTrials = 2
 model_cache = {}
 
 

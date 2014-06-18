@@ -4,43 +4,27 @@ Publish all visuals within a SDF file as rviz Markers
 """
 
 import argparse
-import copy
 
 import rospy
 from visualization_msgs.msg import Marker
 from tf.transformations import *
 
 import pysdf
+from gazebo2rviz import *
 
 
 submodelsToBeIgnored = []
+updatePeriod = 0.5
 markerPub = None
-protoMarkerMsg = Marker()
-protoMarkerMsg.frame_locked = True
-protoMarkerMsg.id = 0
-protoMarkerMsg.type = Marker.MESH_RESOURCE
-protoMarkerMsg.action = Marker.ADD
-protoMarkerMsg.mesh_use_embedded_materials = True
-protoMarkerMsg.color.a = 0.0
-protoMarkerMsg.color.r = 0.0
-protoMarkerMsg.color.g = 0.0
-protoMarkerMsg.color.b = 0.0
 world = None
 markers = []
 
 
 
 def prepare_link_marker(link, full_linkname):
-  if link.visual.geometry_type == 'mesh':
-    marker_msg = copy.deepcopy(protoMarkerMsg)
-    marker_msg.header.frame_id = full_linkname
-    marker_msg.ns = full_linkname
-    marker_msg.mesh_resource = link.visual.geometry_data['uri'].replace('model://', 'file://' + pysdf.models_path)
-    scale = (float(val) for val in link.visual.geometry_data['scale'].split())
-    marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
-    marker_msg.pose = pysdf.homogeneous2pose_msg(link.visual.pose)
+  marker_msg = link2marker_msg(link, full_linkname, rospy.Duration(2 * updatePeriod))
+  if marker_msg:
     markers.append(marker_msg)
-  # TODO other geometry_types
 
 
 def prepare_markers(prefix):
@@ -70,10 +54,8 @@ def main():
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
 
-  global protoMarkerMsg
+  global updatePeriod
   updatePeriod = 1. / args.freq
-  protoMarkerMsg.lifetime = rospy.Duration(2 * updatePeriod)
-  protoMarkerMsg.header.stamp = rospy.get_rostime()
 
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker)
