@@ -13,13 +13,13 @@ import pysdf
 from gazebo2rviz import *
 
 
-lastUpdateTime = None
 updatePeriod = 0.5
-
+use_collision = False
 submodelsToBeIgnored = []
 markerPub = None
 world = None
 model_cache = {}
+lastUpdateTime = None
 
 
 
@@ -27,7 +27,7 @@ def publish_link_marker(link, full_linkname, **kwargs):
   full_linkinstancename = full_linkname
   if 'model_name' in kwargs and 'instance_name' in kwargs:
     full_linkinstancename = full_linkinstancename.replace(kwargs['model_name'], kwargs['instance_name'], 1)
-  marker_msg = link2marker_msg(link, full_linkinstancename, rospy.Duration(2 * updatePeriod))
+  marker_msg = link2marker_msg(link, full_linkinstancename, use_collision, rospy.Duration(2 * updatePeriod))
   if marker_msg:
     markerPub.publish(marker_msg)
 
@@ -46,7 +46,7 @@ def on_model_states_msg(model_states_msg):
     if not model_name in model_cache:
       sdf = pysdf.SDF(model=model_name)
       model_cache[model_name] = sdf.world.models[0]
-      print('Loaded model: %s' % model_cache[model_name].name)
+      rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
     model = model_cache[model_name]
     #print('model:', model)
     model.for_all_links(publish_link_marker, model_name=model_name, instance_name=modelinstance_name)
@@ -55,6 +55,7 @@ def on_model_states_msg(model_states_msg):
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
+  parser.add_argument('-c', '--collision', action='store_true', help='Publish collision instead of visual elements')
   args = parser.parse_args(rospy.myargv()[1:])
 
   rospy.init_node('gazebo2marker')
@@ -66,6 +67,9 @@ def main():
 
   global updatePeriod
   updatePeriod = 1. / args.freq
+
+  global use_collision
+  use_collision = args.collision
 
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker)

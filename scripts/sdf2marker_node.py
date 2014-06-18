@@ -13,8 +13,9 @@ import pysdf
 from gazebo2rviz import *
 
 
-submodelsToBeIgnored = []
 updatePeriod = 0.5
+use_collision = False
+submodelsToBeIgnored = []
 markerPub = None
 world = None
 markers = []
@@ -22,7 +23,7 @@ markers = []
 
 
 def prepare_link_marker(link, full_linkname):
-  marker_msg = link2marker_msg(link, full_linkname, rospy.Duration(2 * updatePeriod))
+  marker_msg = link2marker_msg(link, full_linkname, use_collision, rospy.Duration(2 * updatePeriod))
   if marker_msg:
     markers.append(marker_msg)
 
@@ -45,6 +46,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
   parser.add_argument('-p', '--prefix', default='', help='Publish with prefix')
+  parser.add_argument('-c', '--collision', action='store_true', help='Publish collision instead of visual elements')
   parser.add_argument('sdf', help='SDF model to publish (e.g. coke_can)')
   args = parser.parse_args(rospy.myargv()[1:])
 
@@ -56,6 +58,9 @@ def main():
 
   global updatePeriod
   updatePeriod = 1. / args.freq
+
+  global use_collision
+  use_collision = args.collision
 
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker)
