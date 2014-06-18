@@ -23,8 +23,11 @@ model_cache = {}
 
 
 
-def publish_link_marker(link, full_linkname):
-  marker_msg = link2marker_msg(link, full_linkname, rospy.Duration(2 * updatePeriod))
+def publish_link_marker(link, full_linkname, **kwargs):
+  full_linkinstancename = full_linkname
+  if 'model_name' in kwargs and 'instance_name' in kwargs:
+    full_linkinstancename = full_linkinstancename.replace(kwargs['model_name'], kwargs['instance_name'], 1)
+  marker_msg = link2marker_msg(link, full_linkinstancename, rospy.Duration(2 * updatePeriod))
   if marker_msg:
     markerPub.publish(marker_msg)
 
@@ -37,15 +40,16 @@ def on_model_states_msg(model_states_msg):
   lastUpdateTime = rospy.get_rostime()
 
   for (model_idx, modelinstance_name) in enumerate(model_states_msg.name):
-    print(model_idx, modelinstance_name)
+    #print(model_idx, modelinstance_name)
     model_name = pysdf.name2modelname(modelinstance_name)
-    print('model_name:', model_name)
+    #print('model_name:', model_name)
     if not model_name in model_cache:
       sdf = pysdf.SDF(model=model_name)
       model_cache[model_name] = sdf.world.models[0]
       print('Loaded model: %s' % model_cache[model_name].name)
     model = model_cache[model_name]
-    model.for_all_links(publish_link_marker)
+    #print('model:', model)
+    model.for_all_links(publish_link_marker, model_name=model_name, instance_name=modelinstance_name)
 
 
 def main():
