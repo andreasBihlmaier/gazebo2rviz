@@ -29,7 +29,7 @@ def on_link_states_msg(link_states_msg):
     return
   lastUpdateTime = rospy.get_rostime()
 
-  poses = {'world': identity_matrix()}
+  poses = {'gazebo_world': identity_matrix()}
   for (link_idx, link_name) in enumerate(link_states_msg.name):
     poses[link_name] = pysdf.pose_msg2homogeneous(link_states_msg.pose[link_idx])
     #print('%s:\n%s' % (link_name, poses[link_name]))
@@ -53,7 +53,7 @@ def on_link_states_msg(link_states_msg):
       #print('parent:', parent_link_name)
       parentinstance_link_name = parent_link_name.replace(model_name, modelinstance_name, 1)
     else: # direct child of world
-      parentinstance_link_name = 'world'
+      parentinstance_link_name = 'gazebo_world'
     #print('parentinstance:', parentinstance_link_name)
     pose = poses[link_name]
     parent_pose = poses[parentinstance_link_name]
