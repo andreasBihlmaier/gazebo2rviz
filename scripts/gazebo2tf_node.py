@@ -1,19 +1,26 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import rospy
 import tf
 from geometry_msgs.msg import Pose
 from gazebo_msgs.msg import LinkStates
 import tf_conversions.posemath as pm
+from tf.transformations import *
+
+import pysdf
 
 tfBroadcaster = None
 submodelsToBeIgnored = []
 lastUpdateTime = None
-updatePeriod = 0.02
+updatePeriod = 0.05
 maxResolveTrials = 2
+model_cache = {}
 
 
-def on_link_states_msg(linkStatesMsg):
+
+def on_link_states_msg(link_states_msg):
   """
   Publish tf for each model in current Gazebo world
   """
@@ -23,64 +30,40 @@ def on_link_states_msg(linkStatesMsg):
     return
   lastUpdateTime = rospy.get_rostime()
 
-  poseDict = {}
-  poseResolveList = []
-  for (index, name) in enumerate(linkStatesMsg.name):
-    pose = linkStatesMsg.pose[index]
-    #print('%d: name=%s: pose=\n%s' % (index, name, pose))
-    (parentName, modelName, linkName) = splitName(name)
-    #print('parentName=%s modelName=%s name2modelName=%s linkName=%s' % (parentName, modelName, name2modelName(modelName), linkName))
-    if isBaseLinkName(name2modelName(modelName), linkName):
-      tfFromName=prefixName(name, parentName)
-      tfToName=prefixName(name, modelName)
-    else:
-      tfFromName=prefixName(name, modelName)
-      tfToName=prefixName(name, linkName)
-    #print('tfFromName=%s tfToName=%s' % (tfFromName, tfToName))
+  poses = {'world': identity_matrix()}
+  for (link_idx, link_name) in enumerate(link_states_msg.name):
+    poses[link_name] = pysdf.pose_msg2homogeneous(link_states_msg.pose[link_idx])
+    #print('%s:\n%s' % (link_name, poses[link_name]))
 
-    if tfFromName in submodelsToBeIgnored:
-      print('Ignored submodel')
-      continue;
+  for (link_idx, link_name) in enumerate(link_states_msg.name):
+    #print(link_idx, link_name)
+    modelinstance_name = link_name.split('::')[0]
+    #print('modelinstance_name:', modelinstance_name)
+    model_name = pysdf.name2modelname(modelinstance_name)
+    #print('model_name:', model_name)
+    if not model_name in model_cache:
+      sdf = pysdf.SDF(model=model_name)
+      model_cache[model_name] = sdf.world.models[0]
+      print('Loaded model: %s' % model_cache[model_name].name)
+    model = model_cache[model_name]
+    link_name_in_model = link_name.replace(modelinstance_name + '::', '')
+    link = model.get_link(link_name_in_model)
+    if link.tree_parent_joint:
+      parent_link = link.tree_parent_joint.tree_parent_link
+      parent_link_name = parent_link.get_full_name()
+      #print('parent:', parent_link_name)
+      parentinstance_link_name = parent_link_name.replace(model_name, modelinstance_name, 1)
+    else: # direct child of world
+      parentinstance_link_name = 'world'
+    #print('parentinstance:', parentinstance_link_name)
+    pose = poses[link_name]
+    parent_pose = poses[parentinstance_link_name]
+    rel_tf = concatenate_matrices(inverse_matrix(parent_pose), pose)
+    translation, quaternion = pysdf.homogeneous2translation_quaternion(rel_tf)
+    #print('Publishing TF %s -> %s: t=%s q=%s' % (parentinstance_link_name, link_name, translation, quaternion))
+    tfBroadcaster.sendTransform(translation, quaternion, rospy.get_rostime(), link_name, parentinstance_link_name)
 
-    tfNameTuple = (tfFromName, tfToName)
-    if tfFromName == worldLinkName:
-      relativePose = pose
-    else:
-      poseDict[(worldLinkName, tfToName)] = (pose, False)
-      relativePose = None
-      poseResolveList.append((tfNameTuple, 0))
-    poseDict[tfNameTuple] = (relativePose, True)
-    #print('---')
 
-  while poseResolveList:
-    #print('len(poseResolveList)=%d' % (len(poseResolveList)))
-    resolveTuple, poseResolveList = poseResolveList[0], poseResolveList[1:]
-    tfNameTuple, resolveTrials = resolveTuple
-    if resolveTrials > maxResolveTrials:
-      print('Giving up to trying to resolve %s -> %s' % (tfFromName, tfToName))
-      poseDict.pop(tfNameTuple)
-      continue
-    tfFromName, tfToName = tfNameTuple
-    #print('tfFromName=%s tfToName=%s' % (tfFromName, tfToName))
-    wMVfromPose = poseDict.get((worldLinkName, tfFromName), None)
-    wMVtoPose = poseDict.get((worldLinkName, tfToName), None)
-    if not wMVfromPose or not wMVtoPose:
-      #print('Could not resolve %s -> %s trial=%d: %s' % (tfFromName, tfToName, resolveTrials, 'FROM' if not wMVfromPose else 'TO'))
-      poseResolveList.append((tfNameTuple, resolveTrials + 1))
-    else:
-      wMVfrom = pm.fromMsg(wMVfromPose[0])
-      wMVto = pm.fromMsg(wMVtoPose[0])
-      fromMVto = wMVfrom.Inverse() * wMVto
-      relativePose = pm.toMsg(fromMVto)
-      poseDict[tfNameTuple] = (relativePose, True)
-
-  for tfNameTuple in poseDict:
-    (tfFromName, tfToName) = tfNameTuple
-    if not poseDict[tfNameTuple][1]:
-      continue
-    relativePose = poseDict[tfNameTuple][0]
-    #print('Publishing %s -> %s' % (tfFromName, tfToName))
-    tfBroadcaster.sendTransform(point2Tuple(relativePose.position), quaternion2Tuple(relativePose.orientation), rospy.get_rostime(), tfToName, tfFromName)
 
 def main():
   rospy.init_node('gazebo2tf')
