@@ -8,32 +8,40 @@ import argparse
 import rospy
 import tf
 import tf_conversions.posemath as pm
+from tf.transformations import *
 
-from gazebo2rviz.model_names import *
-from gazebo2rviz.load_sdf import *
+import pysdf
 
 submodelsToBeIgnored = []
 tfBroadcaster = None
-markers = None
+world = None
+tfs = []
 
 
-def publishTF(prefix = ''):
-  for marker in markers:
-    tfFromName = prefix
-    tfToName = marker['tf_name']
-    if tfFromName == tfToName:
-      continue
-    pose = marker['link_pose']
-    translation = point2Tuple(pose.position)
-    rotation = quaternion2Tuple(pose.orientation)
-    #print('Publishing %s -> %s (translation: %s; rotation: %s)' % (tfFromName, tfToName, translation, rotation))
-    tfBroadcaster.sendTransform(translation, rotation, rospy.get_rostime(), tfToName, tfFromName)
+def calculate_tfs(prefix):
+  world.for_all_joints(calculate_joint_tf)
+  for tf in tfs:
+    tf[0] = prefix + pysdf.sdf2tfname(tf[0])
+    tf[1] = prefix + pysdf.sdf2tfname(tf[1])
+
+
+def calculate_joint_tf(joint, full_jointname):
+  full_prefix = full_jointname.replace(joint.name, '')
+  rel_tf = concatenate_matrices(inverse_matrix(joint.tree_parent_link.pose_world), joint.tree_child_link.pose_world)
+  translation, quaternion = pysdf.homogeneous2translation_quaternion(rel_tf)
+  tfs.append([full_prefix + joint.parent, full_prefix + joint.child, translation, quaternion])
+
+
+def publish_tf():
+  for tf in tfs:
+    #print(tf)
+    tfBroadcaster.sendTransform(tf[2], tf[3], rospy.get_rostime(), tf[1], tf[0])
 
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=10, help='Frequency TFs are published (default: 10 Hz)')
-  parser.add_argument('-p', '--prefix', help='Publish under this prefix name (default: SDF model name)')
+  parser.add_argument('-p', '--prefix', default='', help='Publish with prefix')
   parser.add_argument('sdf', help='SDF model to publish (e.g. coke_can)')
   args = parser.parse_args(rospy.myargv()[1:])
 
@@ -46,16 +54,16 @@ def main():
   global tfBroadcaster
   tfBroadcaster = tf.TransformBroadcaster()
 
-  global markers
-  markers = loadModelFromSDF(args.sdf, '', args.prefix)
-  #print(markers)
+  global world
+  sdf = pysdf.SDF(model=args.sdf)
+  world = sdf.world
 
-  prefix = args.prefix if args.prefix else args.sdf
+  calculate_tfs(args.prefix)
 
   rospy.loginfo('Spinning')
   r = rospy.Rate(args.freq)
   while not rospy.is_shutdown():
-    publishTF(prefix);
+    publish_tf();
     r.sleep()
 
 

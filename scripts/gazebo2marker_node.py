@@ -1,96 +1,75 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
+import argparse
 
 import rospy
 import tf
 from gazebo_msgs.msg import ModelStates
 from visualization_msgs.msg import Marker
 
-from gazebo2rviz.model_names import *
-from gazebo2rviz.load_sdf import *
+import pysdf
+from gazebo2rviz import *
 
 
-lastUpdateTime = None
 updatePeriod = 0.5
+use_collision = False
+submodelsToBeIgnored = []
 markerPub = None
-previousModels = []
-modelDict = {} # modelName -> [(tfName1, meshPose1, meshPath1), ...]
+world = None
+model_cache = {}
+lastUpdateTime = None
 
 
 
-def on_model_states_msg(modelStatesMsg):
+def publish_link_marker(link, full_linkname, **kwargs):
+  full_linkinstancename = full_linkname
+  if 'model_name' in kwargs and 'instance_name' in kwargs:
+    full_linkinstancename = full_linkinstancename.replace(kwargs['model_name'], kwargs['instance_name'], 1)
+  marker_msg = link2marker_msg(link, full_linkinstancename, use_collision, rospy.Duration(2 * updatePeriod))
+  if marker_msg:
+    markerPub.publish(marker_msg)
+
+
+def on_model_states_msg(model_states_msg):
   global lastUpdateTime
   sinceLastUpdateDuration = rospy.get_rostime() - lastUpdateTime
   if sinceLastUpdateDuration.to_sec() < updatePeriod:
     return
   lastUpdateTime = rospy.get_rostime()
 
-  protoMarkerMsg = Marker()
-  protoMarkerMsg.header.stamp = rospy.get_rostime()
-  protoMarkerMsg.frame_locked = True
-  protoMarkerMsg.id = 0
-  protoMarkerMsg.type = Marker.MESH_RESOURCE
-  protoMarkerMsg.action = Marker.ADD
-  protoMarkerMsg.lifetime = rospy.Duration(2 * updatePeriod)
-  protoMarkerMsg.mesh_use_embedded_materials = True
-  protoMarkerMsg.color.a = 0.0
-  protoMarkerMsg.color.r = 0.0
-  protoMarkerMsg.color.g = 0.0
-  protoMarkerMsg.color.b = 0.0
-  protoMarkerMsg.scale.x = 1.0
-  protoMarkerMsg.scale.y = 1.0
-  protoMarkerMsg.scale.z = 1.0
-
-  currentModelSet = set(modelStatesMsg.name)
-  global previousModels
-  previousModelSet = set(previousModels)
-  #addedModelSet = currentModelSet.difference(previousModelSet)
-  addedModelSet = currentModelSet
-  #print('addedModelSet=%s' % str(addedModelSet))
-  for (index, name) in enumerate(addedModelSet):
-    #print('%d: name=%s\n' % (index, name))
-    modelName = name2modelName(name)
-    if not name in modelDict:
-      modelDict[name] = loadModelFromSDF(modelName, '', name)
-
-    for modelPart in modelDict[name]:
-      tfName = modelPart['tf_name']
-      if not 'mesh_path' in modelPart:
-        continue
-      meshPose = modelPart['mesh_pose']
-      meshPath = modelPart['mesh_path']
-      markerMsg = protoMarkerMsg
-      markerMsg.header.frame_id = tfName
-      markerMsg.ns = tfName
-      markerMsg.mesh_resource = meshPath
-      markerMsg.pose = meshPose
-      #print('Publishing ADD:\n' + str(markerMsg))
-      markerPub.publish(markerMsg)
-
-  #deletedModelSet = previousModelSet.difference(currentModelSet)
-  #protoRmMarkerMsg = Marker()
-  #protoRmMarkerMsg.header.stamp = rospy.get_rostime()
-  #protoRmMarkerMsg.id = 0
-  #protoRmMarkerMsg.action = Marker.DELETE
-  #for deletedName in deletedModelSet:
-  #  deletedModelName = name2modelName(deletedName)
-  #  for modelPart in modelDict[deletedName]:
-  #    tfName, meshPose, meshPath = modelPart
-  #    rmMarkerMsg = protoRmMarkerMsg
-  #    rmMarkerMsg.header.frame_id = tfName
-  #    rmMarkerMsg.ns = tfName
-  #    print('Publishing DELETE:\n' + str(rmMarkerMsg))
-  #    markerPub.publish(rmMarkerMsg)
-
-  previousModels = modelStatesMsg.name
+  for (model_idx, modelinstance_name) in enumerate(model_states_msg.name):
+    #print(model_idx, modelinstance_name)
+    model_name = pysdf.name2modelname(modelinstance_name)
+    #print('model_name:', model_name)
+    if not model_name in model_cache:
+      sdf = pysdf.SDF(model=model_name)
+      model_cache[model_name] = sdf.world.models[0]
+      rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
+    model = model_cache[model_name]
+    #print('model:', model)
+    model.for_all_links(publish_link_marker, model_name=model_name, instance_name=modelinstance_name)
 
 
 def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
+  parser.add_argument('-c', '--collision', action='store_true', help='Publish collision instead of visual elements')
+  args = parser.parse_args(rospy.myargv()[1:])
+
   rospy.init_node('gazebo2marker')
 
   global submodelsToBeIgnored
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
+
+
+  global updatePeriod
+  updatePeriod = 1. / args.freq
+
+  global use_collision
+  use_collision = args.collision
 
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker)
