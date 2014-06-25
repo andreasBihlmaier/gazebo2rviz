@@ -33,10 +33,10 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
     return
 
   marker_msg = copy.deepcopy(protoMarkerMsg)
-  marker_msg.header.frame_id = full_linkname
+  marker_msg.header.frame_id = pysdf.sdf2tfname(full_linkname)
   marker_msg.header.stamp = rospy.get_rostime()
   marker_msg.lifetime = lifetime
-  marker_msg.ns = full_linkname
+  marker_msg.ns = pysdf.sdf2tfname(full_linkname)
   marker_msg.pose = pysdf.homogeneous2pose_msg(linkpart.pose)
 
   if linkpart.geometry_type == 'mesh':

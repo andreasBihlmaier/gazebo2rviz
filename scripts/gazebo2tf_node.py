@@ -59,8 +59,8 @@ def on_link_states_msg(link_states_msg):
     parent_pose = poses[parentinstance_link_name]
     rel_tf = concatenate_matrices(inverse_matrix(parent_pose), pose)
     translation, quaternion = pysdf.homogeneous2translation_quaternion(rel_tf)
-    #print('Publishing TF %s -> %s: t=%s q=%s' % (parentinstance_link_name, link_name, translation, quaternion))
-    tfBroadcaster.sendTransform(translation, quaternion, rospy.get_rostime(), link_name, parentinstance_link_name)
+    #print('Publishing TF %s -> %s: t=%s q=%s' % (pysdf.sdf2tfname(parentinstance_link_name), pysdf.sdf2tfname(link_name), translation, quaternion))
+    tfBroadcaster.sendTransform(translation, quaternion, rospy.get_rostime(), pysdf.sdf2tfname(link_name), pysdf.sdf2tfname(parentinstance_link_name))
 
 
 
