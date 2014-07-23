@@ -45,9 +45,14 @@ def on_model_states_msg(model_states_msg):
     #print('model_name:', model_name)
     if not model_name in model_cache:
       sdf = pysdf.SDF(model=model_name)
-      model_cache[model_name] = sdf.world.models[0]
-      rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
+      model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
+      if model_cache[model_name]:
+        print('Loaded model: %s' % model_cache[model_name].name)
+      else:
+        print('Unable to load model: %s' % model_name)
     model = model_cache[model_name]
+    if not model: # Not an SDF model
+      continue
     #print('model:', model)
     model.for_all_links(publish_link_marker, model_name=model_name, instance_name=modelinstance_name)
 

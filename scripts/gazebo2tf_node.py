@@ -42,18 +42,24 @@ def on_link_states_msg(link_states_msg):
     #print('model_name:', model_name)
     if not model_name in model_cache:
       sdf = pysdf.SDF(model=model_name)
-      model_cache[model_name] = sdf.world.models[0]
-      print('Loaded model: %s' % model_cache[model_name].name)
+      model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
+      if model_cache[model_name]:
+        print('Loaded model: %s' % model_cache[model_name].name)
+      else:
+        print('Unable to load model: %s' % model_name)
     model = model_cache[model_name]
     link_name_in_model = link_name.replace(modelinstance_name + '::', '')
-    link = model.get_link(link_name_in_model)
-    if link.tree_parent_joint:
-      parent_link = link.tree_parent_joint.tree_parent_link
-      parent_link_name = parent_link.get_full_name()
-      #print('parent:', parent_link_name)
-      parentinstance_link_name = parent_link_name.replace(model_name, modelinstance_name, 1)
-    else: # direct child of world
-      parentinstance_link_name = 'gazebo_world'
+    if model:
+      link = model.get_link(link_name_in_model)
+      if link.tree_parent_joint:
+        parent_link = link.tree_parent_joint.tree_parent_link
+        parent_link_name = parent_link.get_full_name()
+        #print('parent:', parent_link_name)
+        parentinstance_link_name = parent_link_name.replace(model_name, modelinstance_name, 1)
+      else: # direct child of world
+        parentinstance_link_name = 'gazebo_world'
+    else: # Not an SDF model
+        parentinstance_link_name = 'gazebo_world'
     #print('parentinstance:', parentinstance_link_name)
     pose = poses[link_name]
     parent_pose = poses[parentinstance_link_name]
