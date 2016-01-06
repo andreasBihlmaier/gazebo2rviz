@@ -24,7 +24,7 @@ collision_objects = {}
 
 # Slightly modified PlanningSceneInterface.__make_mesh from moveit_commander/src/moveit_commander/planning_scene_interface.py
 def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
-    print("name=%s filename=%s" % (name, filename))
+    #print("make_mesh(name=%s filename=%s)" % (name, filename))
     scene = pyassimp.load(filename)
     if not scene.meshes:
         raise MoveItCommanderException("There are no meshes in the file")
@@ -82,29 +82,33 @@ def link_to_collision_object(link, full_linkname):
 
   collision_object = CollisionObject()
   collision_object.header.frame_id = pysdf.sdf2tfname(full_linkname)
-
+  root_collision_model = get_root_collision_model(link)
+  link_pose_in_root_frame = pysdf.homogeneous2pose_msg(concatenate_matrices(link.pose_world, inverse_matrix(root_collision_model.pose_world)))
   if linkpart.geometry_type == 'mesh':
     scale = tuple(float(val) for val in linkpart.geometry_data['scale'].split())
     mesh_path = linkpart.geometry_data['uri'].replace('model://', pysdf.models_path)
-    root_collision_model = get_root_collision_model(link)
-    link_pose_in_parent_frame = pysdf.homogeneous2pose_msg(link.pose_world * inverse_matrix(root_collision_model.pose_world))
     link_pose_stamped = PoseStamped()
-    link_pose_stamped.pose = link_pose_in_parent_frame
+    link_pose_stamped.pose = link_pose_in_root_frame
     make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
   elif linkpart.geometry_type == 'box':
-    print('TODO')
-    #marker_msg.type = Marker.CUBE
-    #scale = (float(val) for val in linkpart.geometry_data['size'].split())
-    #marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
+    scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
+    box = SolidPrimitive()
+    box.type = SolidPrimitive.BOX
+    box.dimensions = scale
+    collision_object.primitives.append(box)
+    collision_object.primitive_poses.append(link_pose_in_root_frame)
   elif linkpart.geometry_type == 'sphere':
-    print('TODO')
-    #marker_msg.type = Marker.SPHERE
-    #marker_msg.scale.x = marker_msg.scale.y = marker_msg.scale.z = 2.0 * float(linkpart.geometry_data['radius'])
+    sphere = SolidPrimitive()
+    sphere.type = SolidPrimitive.SPHERE
+    sphere.dimensions = 2.0 * float(linkpart.geometry_data['radius'])
+    collision_object.primitives.append(sphere)
+    collision_object.primitive_poses.append(link_pose_in_root_frame)
   elif linkpart.geometry_type == 'cylinder':
-    print('TODO')
-    #marker_msg.type = Marker.CYLINDER
-    #marker_msg.scale.x = marker_msg.scale.y = 2.0 * float(linkpart.geometry_data['radius'])
-    #marker_msg.scale.z = float(linkpart.geometry_data['length'])
+    cylinder = SolidPrimitive()
+    cylinder.type = SolidPrimitive.SPHERE
+    cylinder.dimensions = tuple((2.0 * float(linkpart.geometry_data['radius']), float(linkpart.geometry_data['length'])))
+    collision_object.primitives.append(cylinder)
+    collision_object.primitive_poses.append(link_pose_in_root_frame)
 
   #print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
   return collision_object
@@ -116,7 +120,6 @@ def convert_to_collision_object(link, full_linkname):
     return
 
   link_root = get_root_collision_model(link).root_link.name
-  print("link_root=%s" % link_root)
   if link_root not in collision_objects:
     collision_objects[link_root] = CollisionObject()
     collision_objects[link_root].id = link_root
