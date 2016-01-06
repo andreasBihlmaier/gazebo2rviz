@@ -9,7 +9,7 @@ from pyassimp import pyassimp
 import rospy
 #from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Pose, PoseStamped, Point
-from moveit_msgs.msg import CollisionObject
+from moveit_msgs.msg import CollisionObject, PlanningScene
 from shape_msgs.msg import SolidPrimitive, Plane, Mesh, MeshTriangle
 from tf.transformations import *
 
@@ -18,8 +18,6 @@ from gazebo2rviz import *
 
 
 ignored_submodels = []
-collision_pub = None
-world = None
 collision_objects = {}
 
 
@@ -52,8 +50,13 @@ def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
     return co
 
 
-def append_to_collision_object(collision_object_target, collision_object_source):
-  print("Appending\n%s\n to\n%s" % (collision_object_source, collision_object_target))
+def append_to_collision_object(sink_collision_object, source_collision_object):
+  sink_collision_object.primitives.extend(source_collision_object.primitives)
+  sink_collision_object.primitive_poses.extend(source_collision_object.primitive_poses)
+  sink_collision_object.meshes.extend(source_collision_object.meshes)
+  sink_collision_object.mesh_poses.extend(source_collision_object.mesh_poses)
+  sink_collision_object.planes.extend(source_collision_object.planes)
+  sink_collision_object.plane_poses.extend(source_collision_object.plane_poses)
 
 
 def get_root_collision_model(link):
@@ -103,7 +106,7 @@ def link_to_collision_object(link, full_linkname):
     #marker_msg.scale.x = marker_msg.scale.y = 2.0 * float(linkpart.geometry_data['radius'])
     #marker_msg.scale.z = float(linkpart.geometry_data['length'])
 
-  print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
+  #print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
   return collision_object
 
 
@@ -117,6 +120,7 @@ def convert_to_collision_object(link, full_linkname):
   if link_root not in collision_objects:
     collision_objects[link_root] = CollisionObject()
     collision_objects[link_root].id = link_root
+    collision_objects[link_root].operation = CollisionObject.ADD
   append_to_collision_object(collision_objects[link_root], collision_object)
 
 
@@ -134,14 +138,24 @@ def main():
   ignored_submodels = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
-  global collision_pub
-  collision_pub = rospy.Publisher('/visualization_marker', CollisionObject, queue_size=10)
+  planning_scene_pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=10)
 
-  global world
   sdf = pysdf.SDF(model=args.sdf)
   world = sdf.world
 
   world.for_all_links(convert_to_collision_object)
+  planning_scene_msg = PlanningScene()
+  planning_scene_msg.is_diff = True
+  for (collision_object_root, collision_object) in collision_objects.iteritems():
+    if collision_object_root in ignored_submodels:
+      print('TODO')
+    else:
+      planning_scene_msg.world.collision_objects.append(collision_object)
+
+  while planning_scene_pub.get_num_connections() < 1:
+    rospy.sleep(0.1)
+  planning_scene_pub.publish(planning_scene_msg)
+
 
   #rospy.loginfo('Spinning')
   #r = rospy.Rate(args.freq)
