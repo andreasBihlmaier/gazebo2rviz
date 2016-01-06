@@ -4,10 +4,13 @@ Publish all collision elements within a SDF file as MoveIt CollisionObjects
 """
 
 import argparse
+from pyassimp import pyassimp
 
 import rospy
 #from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Pose, PoseStamped, Point
 from moveit_msgs.msg import CollisionObject
+from shape_msgs.msg import SolidPrimitive, Plane, Mesh, MeshTriangle
 from tf.transformations import *
 
 import pysdf
@@ -20,11 +23,40 @@ world = None
 collision_objects = {}
 
 
+
+# Slightly modified PlanningSceneInterface.__make_mesh from moveit_commander/src/moveit_commander/planning_scene_interface.py
+def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
+    print("name=%s filename=%s" % (name, filename))
+    scene = pyassimp.load(filename)
+    if not scene.meshes:
+        raise MoveItCommanderException("There are no meshes in the file")
+    co.operation = CollisionObject.ADD
+    co.id = name
+    co.header = pose.header
+    
+    mesh = Mesh()
+    for face in scene.meshes[0].faces:
+        triangle = MeshTriangle()
+        if len(face.indices) == 3:
+            triangle.vertex_indices = [face.indices[0], face.indices[1], face.indices[2]]
+        mesh.triangles.append(triangle)
+    for vertex in scene.meshes[0].vertices:
+        point = Point()
+        point.x = vertex[0]*scale[0]
+        point.y = vertex[1]*scale[1]
+        point.z = vertex[2]*scale[2]
+        mesh.vertices.append(point)
+    co.meshes = [mesh]
+    co.mesh_poses = [pose.pose]
+    pyassimp.release(scene)
+    return co
+
+
 def append_to_collision_object(collision_object_target, collision_object_source):
   print("Appending\n%s\n to\n%s" % (collision_object_source, collision_object_target))
 
 
-def get_root_link(link):
+def get_root_collision_model(link):
   # Travere model tree upward until either at the root or an ignored submodel is found which is origin of collision object.
   model = link.parent_model
   while True:
@@ -34,7 +66,7 @@ def get_root_link(link):
       print('TODO')
       break
     model = model.parent_model
-  return model.root_link.name
+  return model
 
 
 def link_to_collision_object(link, full_linkname):
@@ -48,29 +80,30 @@ def link_to_collision_object(link, full_linkname):
   collision_object = CollisionObject()
   collision_object.header.frame_id = pysdf.sdf2tfname(full_linkname)
 
-  # TODO
-  #if linkpart.geometry_type == 'mesh':
-  #  marker_msg.type = Marker.MESH_RESOURCE
-  #  marker_msg.mesh_resource = linkpart.geometry_data['uri'].replace('model://', 'file://' + pysdf.models_path)
-  #  scale = (float(val) for val in linkpart.geometry_data['scale'].split())
-  #  marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
-  #else:
-  #  marker_msg.color.a = 1
-  #  marker_msg.color.r = marker_msg.color.g = marker_msg.color.b = 0.5
+  if linkpart.geometry_type == 'mesh':
+    scale = tuple(float(val) for val in linkpart.geometry_data['scale'].split())
+    mesh_path = linkpart.geometry_data['uri'].replace('model://', pysdf.models_path)
+    root_collision_model = get_root_collision_model(link)
+    link_pose_in_parent_frame = pysdf.homogeneous2pose_msg(link.pose_world * inverse_matrix(root_collision_model.pose_world))
+    link_pose_stamped = PoseStamped()
+    link_pose_stamped.pose = link_pose_in_parent_frame
+    make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
+  elif linkpart.geometry_type == 'box':
+    print('TODO')
+    #marker_msg.type = Marker.CUBE
+    #scale = (float(val) for val in linkpart.geometry_data['size'].split())
+    #marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
+  elif linkpart.geometry_type == 'sphere':
+    print('TODO')
+    #marker_msg.type = Marker.SPHERE
+    #marker_msg.scale.x = marker_msg.scale.y = marker_msg.scale.z = 2.0 * float(linkpart.geometry_data['radius'])
+  elif linkpart.geometry_type == 'cylinder':
+    print('TODO')
+    #marker_msg.type = Marker.CYLINDER
+    #marker_msg.scale.x = marker_msg.scale.y = 2.0 * float(linkpart.geometry_data['radius'])
+    #marker_msg.scale.z = float(linkpart.geometry_data['length'])
 
-  #if linkpart.geometry_type == 'box':
-  #  marker_msg.type = Marker.CUBE
-  #  scale = (float(val) for val in linkpart.geometry_data['size'].split())
-  #  marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
-  #elif linkpart.geometry_type == 'sphere':
-  #  marker_msg.type = Marker.SPHERE
-  #  marker_msg.scale.x = marker_msg.scale.y = marker_msg.scale.z = 2.0 * float(linkpart.geometry_data['radius'])
-  #elif linkpart.geometry_type == 'cylinder':
-  #  marker_msg.type = Marker.CYLINDER
-  #  marker_msg.scale.x = marker_msg.scale.y = 2.0 * float(linkpart.geometry_data['radius'])
-  #  marker_msg.scale.z = float(linkpart.geometry_data['length'])
-
-  #print(marker_msg)
+  print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
   return collision_object
 
 
@@ -79,10 +112,11 @@ def convert_to_collision_object(link, full_linkname):
   if not collision_object:
     return
 
-  link_root = get_root_link(link)
+  link_root = get_root_collision_model(link).root_link.name
   print("link_root=%s" % link_root)
   if link_root not in collision_objects:
     collision_objects[link_root] = CollisionObject()
+    collision_objects[link_root].id = link_root
   append_to_collision_object(collision_objects[link_root], collision_object)
 
 
@@ -101,7 +135,7 @@ def main():
   rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
   global collision_pub
-  collision_pub = rospy.Publisher('/visualization_marker', CollisionObject)
+  collision_pub = rospy.Publisher('/visualization_marker', CollisionObject, queue_size=10)
 
   global world
   sdf = pysdf.SDF(model=args.sdf)

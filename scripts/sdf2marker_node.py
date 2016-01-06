@@ -63,7 +63,7 @@ def main():
   use_collision = args.collision
 
   global markerPub
-  markerPub = rospy.Publisher('/visualization_marker', Marker)
+  markerPub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
 
   global world
   sdf = pysdf.SDF(model=args.sdf)
