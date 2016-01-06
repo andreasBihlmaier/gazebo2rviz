@@ -30,6 +30,7 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
     linkpart = getattr(link, 'visual')
 
   if not linkpart.geometry_type in supported_geometry_types:
+    print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
     return
 
   marker_msg = copy.deepcopy(protoMarkerMsg)
