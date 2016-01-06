@@ -17,7 +17,7 @@ import pysdf
 from gazebo2rviz import *
 
 
-ignored_submodels = []
+ignored_submodels = []  # All children are ignored as well.
 collision_objects = {}
 
 
@@ -59,14 +59,20 @@ def append_to_collision_object(sink_collision_object, source_collision_object):
   sink_collision_object.plane_poses.extend(source_collision_object.plane_poses)
 
 
+def is_ignored(model_name):
+  for ignored_submodel in ignored_submodels:
+    if model_name == ignored_submodel or model_name.startswith(ignored_submodel):
+      return True
+  return False
+
+
 def get_root_collision_model(link):
   # Travere model tree upward until either at the root or an ignored submodel is found which is origin of collision object.
   model = link.parent_model
   while True:
     if not model.parent_model:
       break
-    elif model.name in ignored_submodels:
-      print('TODO')
+    elif is_ignored(model.name):
       break
     model = model.parent_model
   return model
@@ -78,6 +84,10 @@ def link_to_collision_object(link, full_linkname):
 
   if linkpart.geometry_type not in supported_geometry_types:
     print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
+    return
+
+  if is_ignored(link.parent_model.name):
+    print("Ignoring link %s." % full_linkname)
     return
 
   collision_object = CollisionObject()
@@ -138,7 +148,7 @@ def main():
   rospy.init_node('sdf2moveit_collision')
 
   global ignored_submodels
-  ignored_submodels = rospy.get_param('~ignore_submodels_of', '').split(';')
+  ignored_submodels = rospy.get_param('~ignore_submodels', '').split(';')
   rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
   planning_scene_pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=10)
@@ -151,7 +161,7 @@ def main():
   planning_scene_msg.is_diff = True
   for (collision_object_root, collision_object) in collision_objects.iteritems():
     if collision_object_root in ignored_submodels:
-      print('TODO')
+      print('TODO2')
     else:
       planning_scene_msg.world.collision_objects.append(collision_object)
 
