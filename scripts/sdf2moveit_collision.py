@@ -17,7 +17,7 @@ import pysdf
 from gazebo2rviz import *
 
 
-ignored_submodels = []  # All children are ignored as well.
+ignored_submodels = []
 collision_objects = {}
 
 
@@ -59,9 +59,10 @@ def append_to_collision_object(sink_collision_object, source_collision_object):
   sink_collision_object.plane_poses.extend(source_collision_object.plane_poses)
 
 
-def is_ignored(model_name):
+def is_ignored(model):
+  model_full_name = model.get_full_name()
   for ignored_submodel in ignored_submodels:
-    if model_name == ignored_submodel or model_name.startswith(ignored_submodel):
+    if model_full_name == ignored_submodel or model_full_name.endswith('::' + ignored_submodel):
       return True
   return False
 
@@ -72,7 +73,7 @@ def get_root_collision_model(link):
   while True:
     if not model.parent_model:
       break
-    elif is_ignored(model.name):
+    elif is_ignored(model):
       break
     model = model.parent_model
   return model
@@ -86,7 +87,7 @@ def link_to_collision_object(link, full_linkname):
     print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
     return
 
-  if is_ignored(link.parent_model.name):
+  if is_ignored(link.parent_model):
     print("Ignoring link %s." % full_linkname)
     return
 
@@ -161,9 +162,10 @@ def main():
   planning_scene_msg.is_diff = True
   for (collision_object_root, collision_object) in collision_objects.iteritems():
     if collision_object_root in ignored_submodels:
-      print('TODO2')
+      print('TODO2')  # attached object instead of collision object
     else:
       planning_scene_msg.world.collision_objects.append(collision_object)
+      planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
 
   while planning_scene_pub.get_num_connections() < 1:
     rospy.sleep(0.1)

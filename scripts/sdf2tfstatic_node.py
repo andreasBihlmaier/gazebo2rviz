@@ -12,10 +12,19 @@ from tf.transformations import *
 
 import pysdf
 
-submodelsToBeIgnored = []
+ignored_submodels = []
 tfBroadcaster = None
 world = None
 tfs = []
+
+
+
+def is_ignored(model):
+  model_full_name = model.get_full_name()
+  for ignored_submodel in ignored_submodels:
+    if model_full_name == ignored_submodel or model_full_name.endswith('::' + ignored_submodel):
+      return True
+  return False
 
 
 def calculate_tfs(prefix):
@@ -27,6 +36,9 @@ def calculate_tfs(prefix):
 
 def calculate_joint_tf(joint, full_jointname):
   full_prefix = full_jointname.replace(joint.name, '')
+  if is_ignored(joint.parent_model):
+    print("Ignoring TF %s -> %s" % (full_prefix + joint.parent, full_prefix + joint.child))
+    return
   rel_tf = concatenate_matrices(inverse_matrix(joint.tree_parent_link.pose_world), joint.tree_child_link.pose_world)
   translation, quaternion = pysdf.homogeneous2translation_quaternion(rel_tf)
   tfs.append([full_prefix + joint.parent, full_prefix + joint.child, translation, quaternion])
@@ -47,9 +59,9 @@ def main():
 
   rospy.init_node('sdf2tfstatic')
 
-  global submodelsToBeIgnored
-  submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
-  rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
+  global ignored_submodels
+  ignored_submodels = rospy.get_param('~ignore_submodels', '').split(';')
+  rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
   global tfBroadcaster
   tfBroadcaster = tf.TransformBroadcaster()
