@@ -116,12 +116,12 @@ def link_to_collision_object(link, full_linkname):
     collision_object.primitive_poses.append(link_pose_in_root_frame)
   elif linkpart.geometry_type == 'cylinder':
     cylinder = SolidPrimitive()
-    cylinder.type = SolidPrimitive.SPHERE
+    cylinder.type = SolidPrimitive.CYLINDER
     cylinder.dimensions = tuple((2.0 * float(linkpart.geometry_data['radius']), float(linkpart.geometry_data['length'])))
     collision_object.primitives.append(cylinder)
     collision_object.primitive_poses.append(link_pose_in_root_frame)
 
-  #print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
+  print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
   return collision_object
 
 
