@@ -1,6 +1,8 @@
 <launch>
   <arg name="model" />
+  <arg name="collision" default="false"/>
 
   <node name="sdf2tfstatic" pkg="gazebo2rviz" type="sdf2tfstatic_node.py" args="$(arg model)" output="screen" />
-  <node name="sdf2marker" pkg="gazebo2rviz" type="sdf2marker_node.py" args="$(arg model)" output="screen" />
+  <node name="sdf2marker" pkg="gazebo2rviz" type="sdf2marker_node.py" args="$(arg model)" output="screen" unless="$(arg collision)" />
+  <node name="sdf2marker" pkg="gazebo2rviz" type="sdf2marker_node.py" args="-c $(arg model)" output="screen" if="$(arg collision)" />
 </launch>
