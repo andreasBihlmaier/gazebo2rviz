@@ -6,8 +6,7 @@ import rospy
 from visualization_msgs.msg import Marker
 
 import pysdf
-
-
+import os.path
 
 protoMarkerMsg = Marker()
 protoMarkerMsg.frame_locked = True
@@ -30,8 +29,9 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
     linkpart = getattr(link, 'visual')
 
   if not linkpart.geometry_type in supported_geometry_types:
-    print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
-    return
+    if linkpart.geometry_type:
+      print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
+      return None
 
   marker_msg = copy.deepcopy(protoMarkerMsg)
   marker_msg.header.frame_id = pysdf.sdf2tfname(full_linkname)
@@ -42,7 +42,18 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
 
   if linkpart.geometry_type == 'mesh':
     marker_msg.type = Marker.MESH_RESOURCE
-    marker_msg.mesh_resource = linkpart.geometry_data['uri'].replace('model://', 'file://' + pysdf.models_path)
+    #print('linkpart.geometry_data: %s' % linkpart.geometry_data['uri'])
+    for models_path in pysdf.models_paths:
+      resource = linkpart.geometry_data['uri'].replace('model://', models_path + '/')
+      #print('resource: %s' % resource)
+      if os.path.isfile(resource):
+        marker_msg.mesh_resource = 'file://' + resource
+        #print('found resource %s at %s' % (linkpart.geometry_data['uri'], resource))
+        break
+    if not marker_msg.mesh_resource:
+      print('ERROR! could not find resource: %s' % linkpart.geometry_data['uri'])
+      return None
+
     scale = (float(val) for val in linkpart.geometry_data['scale'].split())
     marker_msg.scale.x, marker_msg.scale.y, marker_msg.scale.z = scale
   else:
