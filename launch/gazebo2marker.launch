@@ -1,5 +1,12 @@
 <launch>
-  <node name="gazebo2marker" pkg="gazebo2rviz" type="gazebo2marker_node.py" output="screen">
+  <arg name="frequency" default="2" />
+  <arg name="collision" default="false" />
+
+  <arg name="collision_arg" value="-c" if="$(arg collision)" />
+  <arg name="collision_arg" value="" unless="$(arg collision)" />
+
+
+  <node name="gazebo2marker" pkg="gazebo2rviz" type="gazebo2marker_node.py" args="-f $(arg frequency) $(arg collision_arg)" output="screen">
     <param name="ignore_submodels_of" value="" type="str" />
   </node>
 </launch>

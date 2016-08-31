@@ -1,4 +1,10 @@
 <launch>
+  <arg name="marker_frequency" default="2" />
+  <arg name="marker_collision" default="false" />
+
   <include file="$(find gazebo2rviz)/launch/gazebo2tf.launch" />
-  <include file="$(find gazebo2rviz)/launch/gazebo2marker.launch" />
+  <include file="$(find gazebo2rviz)/launch/gazebo2marker.launch">
+    <arg name="frequency" value="$(arg marker_frequency)" />
+    <arg name="collision" value="$(arg marker_collision)" />
+  </include>
 </launch>
