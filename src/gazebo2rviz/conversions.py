@@ -3,6 +3,7 @@ from __future__ import print_function
 import copy
 
 import rospy
+from rospkg import RosPack, ResourceNotFound
 from visualization_msgs.msg import Marker
 
 import pysdf
@@ -18,6 +19,8 @@ protoMarkerMsg.color.r = 0.0
 protoMarkerMsg.color.g = 0.0
 protoMarkerMsg.color.b = 0.0
 supported_geometry_types = ['mesh', 'cylinder', 'sphere', 'box']
+
+gazebo_rospack = RosPack()
 
 
 def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy.Duration(0)):
@@ -50,6 +53,21 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
         marker_msg.mesh_resource = 'file://' + resource
         #print('found resource %s at %s' % (linkpart.geometry_data['uri'], resource))
         break
+    # support URDF-like resource paths starting with model://
+    if not marker_msg.mesh_resource and linkpart.geometry_data['uri'].startswith('model://'):
+      stripped_uri = linkpart.geometry_data['uri'].replace('model://', '')
+      uri_parts = stripped_uri.split('/', 1)
+
+      if len(uri_parts) == 2:
+        package_name = uri_parts[0]
+        try:
+          package_path = gazebo_rospack.get_path(package_name)
+          mesh_path = os.path.join(package_path, uri_parts[1])
+          if os.path.isfile(mesh_path):
+            marker_msg.mesh_resource = 'file://' + mesh_path
+        except ResourceNotFound, e:
+          pass
+            
     if not marker_msg.mesh_resource:
       print('ERROR! could not find resource: %s' % linkpart.geometry_data['uri'])
       return None
