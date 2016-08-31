@@ -11,7 +11,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES gazebo2rviz
-#  CATKIN_DEPENDS rospy
+  CATKIN_DEPENDS rospy pysdf rospkg
 #  DEPENDS system_lib
 )
 

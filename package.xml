@@ -13,6 +13,7 @@
   <build_depend>pysdf</build_depend>
   <run_depend>pysdf</run_depend>
   <run_depend>rospy</run_depend>
+  <run_depend>rospkg</run_depend>
 
   <export>
   </export>
