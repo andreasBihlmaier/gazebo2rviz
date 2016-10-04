@@ -44,8 +44,14 @@ def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
         point.y = vertex[1]*scale[1]
         point.z = vertex[2]*scale[2]
         mesh.vertices.append(point)
-    co.meshes = [mesh]
-    co.mesh_poses = [pose.pose]
+    if not isinstance(co.meshes, list):
+        co.meshes = []
+    co.meshes += [mesh]
+
+    if not isinstance(co.mesh_poses, list):
+        co.mesh_poses = []
+    co.mesh_poses += [pose.pose]
+
     pyassimp.release(scene)
     return co
 
@@ -81,11 +87,7 @@ def get_root_collision_model(link):
 
 def link_to_collision_object(link, full_linkname):
   supported_geometry_types = ['mesh', 'cylinder', 'sphere', 'box']
-  linkpart = getattr(link, 'collision')
-
-  if linkpart.geometry_type not in supported_geometry_types:
-    print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
-    return
+  linkparts = getattr(link, 'collisions')
 
   if is_ignored(link.parent_model):
     print("Ignoring link %s." % full_linkname)
@@ -95,31 +97,37 @@ def link_to_collision_object(link, full_linkname):
   collision_object.header.frame_id = pysdf.sdf2tfname(full_linkname)
   root_collision_model = get_root_collision_model(link)
   link_pose_in_root_frame = pysdf.homogeneous2pose_msg(concatenate_matrices(link.pose_world, inverse_matrix(root_collision_model.pose_world)))
-  if linkpart.geometry_type == 'mesh':
-    scale = tuple(float(val) for val in linkpart.geometry_data['scale'].split())
-    mesh_path = linkpart.geometry_data['uri'].replace('model://', pysdf.models_path)
-    link_pose_stamped = PoseStamped()
-    link_pose_stamped.pose = link_pose_in_root_frame
-    make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
-  elif linkpart.geometry_type == 'box':
-    scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
-    box = SolidPrimitive()
-    box.type = SolidPrimitive.BOX
-    box.dimensions = scale
-    collision_object.primitives.append(box)
-    collision_object.primitive_poses.append(link_pose_in_root_frame)
-  elif linkpart.geometry_type == 'sphere':
-    sphere = SolidPrimitive()
-    sphere.type = SolidPrimitive.SPHERE
-    sphere.dimensions = 2.0 * float(linkpart.geometry_data['radius'])
-    collision_object.primitives.append(sphere)
-    collision_object.primitive_poses.append(link_pose_in_root_frame)
-  elif linkpart.geometry_type == 'cylinder':
-    cylinder = SolidPrimitive()
-    cylinder.type = SolidPrimitive.CYLINDER
-    cylinder.dimensions = tuple((2.0 * float(linkpart.geometry_data['radius']), float(linkpart.geometry_data['length'])))
-    collision_object.primitives.append(cylinder)
-    collision_object.primitive_poses.append(link_pose_in_root_frame)
+
+  for linkpart in linkparts:
+      if linkpart.geometry_type not in supported_geometry_types:
+          print("Element %s with geometry type %s not supported. Ignored." % (full_linkname, linkpart.geometry_type))
+          continue
+
+      if linkpart.geometry_type == 'mesh':
+        scale = tuple(float(val) for val in linkpart.geometry_data['scale'].split())
+        mesh_path = linkpart.geometry_data['uri'].replace('model://', pysdf.models_path)
+        link_pose_stamped = PoseStamped()
+        link_pose_stamped.pose = link_pose_in_root_frame
+        make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
+      elif linkpart.geometry_type == 'box':
+        scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
+        box = SolidPrimitive()
+        box.type = SolidPrimitive.BOX
+        box.dimensions = scale
+        collision_object.primitives.append(box)
+        collision_object.primitive_poses.append(link_pose_in_root_frame)
+      elif linkpart.geometry_type == 'sphere':
+        sphere = SolidPrimitive()
+        sphere.type = SolidPrimitive.SPHERE
+        sphere.dimensions = 2.0 * float(linkpart.geometry_data['radius'])
+        collision_object.primitives.append(sphere)
+        collision_object.primitive_poses.append(link_pose_in_root_frame)
+      elif linkpart.geometry_type == 'cylinder':
+        cylinder = SolidPrimitive()
+        cylinder.type = SolidPrimitive.CYLINDER
+        cylinder.dimensions = tuple((2.0 * float(linkpart.geometry_data['radius']), float(linkpart.geometry_data['length'])))
+        collision_object.primitives.append(cylinder)
+        collision_object.primitive_poses.append(link_pose_in_root_frame)
 
   #print('CollisionObject for %s:\n%s' % (full_linkname, collision_object))
   return collision_object

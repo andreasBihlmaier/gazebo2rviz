@@ -27,9 +27,10 @@ def publish_link_marker(link, full_linkname, **kwargs):
   full_linkinstancename = full_linkname
   if 'model_name' in kwargs and 'instance_name' in kwargs:
     full_linkinstancename = full_linkinstancename.replace(kwargs['model_name'], kwargs['instance_name'], 1)
-  marker_msg = link2marker_msg(link, full_linkinstancename, use_collision, rospy.Duration(2 * updatePeriod))
-  if marker_msg:
-    markerPub.publish(marker_msg)
+  marker_msgs = link2marker_msg(link, full_linkinstancename, use_collision, rospy.Duration(2 * updatePeriod))
+  if len(marker_msgs) > 0:
+    for marker_msg in marker_msgs:
+      markerPub.publish(marker_msg)
 
 
 def on_model_states_msg(model_states_msg):
