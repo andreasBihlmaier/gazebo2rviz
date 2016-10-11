@@ -1,0 +1,7 @@
+<launch>
+  <arg name="frequency" default="2" />
+
+  <node name="gazebo2moveit" pkg="gazebo2rviz" type="gazebo2moveit_collision_node.py" args="-f $(arg frequency)" output="screen">
+    <param name="ignore_submodels_of" value="" type="str" />
+  </node>
+</launch>
