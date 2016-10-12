@@ -31,15 +31,11 @@ collision_objects_updated = {}
 
 
 # Slightly modified PlanningSceneInterface.__make_mesh from moveit_commander/src/moveit_commander/planning_scene_interface.py
-def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
-    print("make_mesh(name=%s filename=%s)" % (name, filename))
+def make_mesh(co, pose, filename, scale = (1.0, 1.0, 1.0)):
     scene = pyassimp.load(filename)
     if not scene.meshes:
         raise MoveItCommanderException("There are no meshes in the file")
-    co.operation = CollisionObject.ADD
-    co.id = name
-    co.header = pose.header
-    
+
     mesh = Mesh()
     for face in scene.meshes[0].faces:
         triangle = MeshTriangle()
@@ -74,7 +70,6 @@ def is_ignored(model):
 def link_to_collision_object(link, full_linkname):
   supported_geometry_types = ['mesh', 'cylinder', 'sphere', 'box']
   linkparts = getattr(link, 'collisions')
-
   if is_ignored(link.parent_model):
     print("Ignoring link %s." % full_linkname)
     return
@@ -95,8 +90,8 @@ def link_to_collision_object(link, full_linkname):
             mesh_path = resource
             break
         link_pose_stamped = PoseStamped()
-        link_pose_stamped.pose = linkpart.pose
-        make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
+        link_pose_stamped.pose = pysdf.homogeneous2pose_msg(linkpart.pose)
+        make_mesh(collision_object, link_pose_stamped, mesh_path, scale)
       elif linkpart.geometry_type == 'box':
         scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
         box = SolidPrimitive()
@@ -162,11 +157,11 @@ def move_collision_object(sink_collision_object, source_collision_object, update
   for pose in source_collision_object.mesh_poses:
     mesh_pose_in_link = pysdf.pose_msg2homogeneous(pose)
     mesh_pose_in_world = pysdf.homogeneous2pose_msg(concatenate_matrices(link_world, mesh_pose_in_link))
-    sink_collision_object.primitive_poses.extend([mesh_pose_in_world])
+    sink_collision_object.mesh_poses.extend([mesh_pose_in_world])
   for pose in source_collision_object.plane_poses:
     plane_pose_in_link = pysdf.pose_msg2homogeneous(pose)
     plane_pose_in_world = pysdf.homogeneous2pose_msg(concatenate_matrices(link_world, plane_pose_in_link))
-    sink_collision_object.primitive_poses.extend([plane_pose_in_world])
+    sink_collision_object.plane_poses.extend([plane_pose_in_world])
 
 
 def on_model_states_msg(model_states_msg):
@@ -180,7 +175,6 @@ def on_model_states_msg(model_states_msg):
 
   for (model_idx, modelinstance_name) in enumerate(model_states_msg.name):
     model_name = pysdf.name2modelname(modelinstance_name)
-    #print('model_name:', model_name)
     
     if not model_name in model_cache:
       # Add new collision object
