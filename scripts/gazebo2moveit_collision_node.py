@@ -116,8 +116,12 @@ def link_to_collision_object(link, full_linkname):
   return collision_object
 
 
-def convert_to_collision_object(link, full_linkname):
-  collision_object = link_to_collision_object(link, full_linkname)
+def convert_to_collision_object(link, full_linkname, **kwargs):
+  if 'name' in kwargs:
+    modelinstance_name = kwargs['name']
+
+  full_linkname_mod = modelinstance_name + "::" + full_linkname.split("::")[1]
+  collision_object = link_to_collision_object(link, full_linkname_mod)
   if not collision_object:
     return
 
@@ -139,7 +143,11 @@ def append_to_collision_object(sink_collision_object, source_collision_object):
 
 
 def update_collision_object(link, full_linkname, **kwargs):
-  link_root = pysdf.sdf2tfname(full_linkname) 
+  if 'name' in kwargs:
+    modelinstance_name = kwargs['name']
+  
+  full_linkname_mod = modelinstance_name + "::" + full_linkname.split("::")[1]
+  link_root = pysdf.sdf2tfname(full_linkname_mod) 
   collision_objects_updated[link_root] = CollisionObject()
   collision_objects_updated[link_root].id = link_root
   collision_objects_updated[link_root].operation = CollisionObject.MOVE
@@ -176,14 +184,14 @@ def on_model_states_msg(model_states_msg):
   for (model_idx, modelinstance_name) in enumerate(model_states_msg.name):
     model_name = pysdf.name2modelname(modelinstance_name)
     
-    if not model_name in model_cache:
+    if not modelinstance_name in model_cache:
       # Add new collision object
       sdf = pysdf.SDF(model=model_name)
-      model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
-      if model_cache[model_name]:
-        print('Loaded model: %s' % model_cache[model_name].name)
-        model = model_cache[model_name]
-        model.for_all_links(convert_to_collision_object)   
+      model_cache[modelinstance_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
+      if model_cache[modelinstance_name]:
+        print('Loaded model: %s' % model_cache[modelinstance_name].name)
+        model = model_cache[modelinstance_name]
+        model.for_all_links(convert_to_collision_object, name=modelinstance_name)   
         planning_scene_msg = PlanningScene()
         planning_scene_msg.is_diff = True
         for (collision_object_root, collision_object) in collision_objects.iteritems():
@@ -193,13 +201,14 @@ def on_model_states_msg(model_states_msg):
             planning_scene_msg.world.collision_objects.append(collision_object)
             planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
         planning_scene_pub.publish(planning_scene_msg)
+        print 
       else:
         print('Unable to load model: %s' % model_name) 
 
     # Move existing object  
-    model = model_cache[model_name]
+    model = model_cache[modelinstance_name]
     if model:
-        model.for_all_links(update_collision_object, pose=model_states_msg.pose[model_idx])
+        model.for_all_links(update_collision_object, name=modelinstance_name, pose=model_states_msg.pose[model_idx])
     else: # Not an SDF model
       continue
 
