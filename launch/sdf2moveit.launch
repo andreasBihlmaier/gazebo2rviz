@@ -1,0 +1,7 @@
+<launch>
+  <arg name="model" />
+
+  <node name="sdf2moveit" pkg="gazebo2rviz" type="sdf2moveit_collision_node.py" args="$(arg model)" output="screen" >
+    <param name="ignore_submodels_of" value="" type="str" />
+  </node>
+</launch>
