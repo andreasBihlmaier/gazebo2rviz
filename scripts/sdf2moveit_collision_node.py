@@ -5,6 +5,7 @@ Publish all collision elements within a SDF file as MoveIt CollisionObjects
 
 import argparse
 from pyassimp import pyassimp
+from pyassimp.errors import AssimpError
 import os.path
 
 import rospy
@@ -31,7 +32,11 @@ class Srdf2moveit(object):
 
     # Slightly modified PlanningSceneInterface.__make_mesh from moveit_commander/src/moveit_commander/planning_scene_interface.py
     def make_mesh(self, co, pose, filename, scale=(1.0, 1.0, 1.0)):
-        scene = pyassimp.load(filename)
+        try:
+            scene = pyassimp.load(filename)
+        except AssimpError as e:
+            rospy.logerr("Assimp error: %s", e)
+            return False
         if not scene.meshes:
             raise MoveItCommanderException("There are no meshes in the file")
 
@@ -87,9 +92,11 @@ class Srdf2moveit(object):
                     if os.path.isfile(resource):
                         mesh_path = resource
                         break
-                link_pose_stamped = PoseStamped()
-                link_pose_stamped.pose = pysdf.homogeneous2pose_msg(linkpart.pose)
-                self.make_mesh(collision_object, link_pose_stamped, mesh_path, scale)
+                if mesh_path:
+                    link_pose_stamped = PoseStamped()
+                    link_pose_stamped.pose = pysdf.homogeneous2pose_msg(linkpart.pose)
+                    if not self.make_mesh(collision_object, link_pose_stamped, mesh_path, scale):
+                        return None
             elif linkpart.geometry_type == 'box':
                 scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
                 box = SolidPrimitive()
@@ -166,10 +173,13 @@ class Srdf2moveit(object):
 
     def add_new_collision_object(self, model_name, modelinstance_name):
         sdf = pysdf.SDF(model=model_name)
+        num_collision_objects = len(self.collision_objects)
         model = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
         if model:
-            rospy.loginfo('Loaded model: %s' % modelinstance_name)
             model.for_all_links(self.convert_to_collision_object, name=modelinstance_name)
+            if len(self.collision_objects) == num_collision_objects:
+                rospy.logerr('Unable to load model: %s' % model_name)
+                return None
             planning_scene_msg = PlanningScene()
             planning_scene_msg.is_diff = True
             for (collision_object_root, collision_object) in self.collision_objects.iteritems():
@@ -179,6 +189,7 @@ class Srdf2moveit(object):
                     planning_scene_msg.world.collision_objects.append(collision_object)
                     planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
             self.planning_scene_pub.publish(planning_scene_msg)
+            rospy.loginfo('Loaded model: %s' % modelinstance_name)
             return model
         else:
             rospy.logerr('Unable to load model: %s' % model_name)
