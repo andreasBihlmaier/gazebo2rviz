@@ -198,6 +198,18 @@ class Srdf2moveit(object):
             rospy.logerr('Unable to load model: %s' % model_name)
             return None
 
+    def delete_collision_object(self, modelinstance_name):
+        for id in [object.id for key, object in self.collision_objects_updated.items() if modelinstance_name in key.lower()]:
+            del self.collision_objects_updated[id]
+            planning_scene_msg = PlanningScene()
+            planning_scene_msg.is_diff = True
+            deleted_obj = CollisionObject()
+            deleted_obj.id = id
+            deleted_obj.operation = CollisionObject.REMOVE
+            planning_scene_msg.world.collision_objects.append(deleted_obj)
+            planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
+            self.planning_scene_pub.publish(planning_scene_msg)
+
     def update_collision_object_with_pose(self, model, modelinstance_name, pose):
         if model:
             model.for_all_links(self.update_collision_object, name=modelinstance_name, pose=pose)

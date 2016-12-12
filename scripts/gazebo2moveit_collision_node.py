@@ -41,6 +41,12 @@ def on_model_states_msg(model_states_msg):
         model = model_cache[modelinstance_name]
         srdf2moveit.update_collision_object_with_pose(model, modelinstance_name, model_states_msg.pose[model_idx])
 
+    for modelinstance_name in list(model_cache):
+        if modelinstance_name not in model_states_msg.name:
+            # Object has been deleted in gazebo so it needs to be deleted in rviz
+            rospy.loginfo("Object %s deleted from gazebo" % modelinstance_name)
+            srdf2moveit.delete_collision_object(modelinstance_name)
+            del model_cache[modelinstance_name]
 
 def main():
     parser = argparse.ArgumentParser()
