@@ -10,14 +10,13 @@ import os.path
 
 import rospy
 from geometry_msgs.msg import PoseStamped, Point
-from moveit_msgs.msg import CollisionObject, PlanningScene
+from moveit_msgs.msg import CollisionObject, PlanningScene, PlanningSceneComponents
+from moveit_msgs.srv import GetPlanningScene
 from shape_msgs.msg import SolidPrimitive, Plane, Mesh, MeshTriangle
 from tf.transformations import *
 
 import pysdf
 from gazebo2rviz import *
-
-ignored_submodels = []
 
 class Srdf2moveit(object):
     def __init__(self):
@@ -29,6 +28,10 @@ class Srdf2moveit(object):
         self.planning_scene_pub = rospy.Publisher('/planning_scene', PlanningScene, queue_size=10)
         while self.planning_scene_pub.get_num_connections() < 1:
             rospy.sleep(0.1)
+
+        rospy.wait_for_service('/get_planning_scene', 10.0)
+        self.get_planning_scene = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)
+        self.request = PlanningSceneComponents(components=PlanningSceneComponents.WORLD_OBJECT_NAMES)
 
     # Slightly modified PlanningSceneInterface.__make_mesh from moveit_commander/src/moveit_commander/planning_scene_interface.py
     def make_mesh(self, co, pose, filename, scale=(1.0, 1.0, 1.0)):
@@ -200,15 +203,20 @@ class Srdf2moveit(object):
             model.for_all_links(self.update_collision_object, name=modelinstance_name, pose=pose)
         else:
             return
+
+        response = self.get_planning_scene(self.request)
+        current_scene_objects = [object.id for object in response.scene.world.collision_objects]
  
         planning_scene_msg = PlanningScene()
         planning_scene_msg.is_diff = True
         for (collision_object_root, collision_object) in self.collision_objects_updated.iteritems():
-            if collision_object_root in ignored_submodels:
-                pass
-            else:
-                planning_scene_msg.world.collision_objects.append(collision_object)
-                planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
+            if collision_object_root in current_scene_objects:
+                # Object is present in the planning scene
+                if collision_object_root in self.ignored_submodels:
+                    pass
+                else:
+                    planning_scene_msg.world.collision_objects.append(collision_object)
+                    planning_scene_msg.world.collision_objects[-1].header.frame_id = 'world'
         self.planning_scene_pub.publish(planning_scene_msg)
 
 
@@ -222,8 +230,7 @@ def main():
     global srdf2moveit
     srdf2moveit = Srdf2moveit()
 
-    global ignored_submodels
-    ignored_submodels = rospy.get_param('~ignore_submodels', '').split(';')
+    ignored_submodels = rospy.get_param('~ignore_submodels_of', '').split(';')
     srdf2moveit.ignored_submodels = ignored_submodels
     rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 

@@ -53,7 +53,7 @@ def main():
     srdf2moveit = Srdf2moveit()
 
     global ignored_submodels
-    ignored_submodels = rospy.get_param('~ignore_submodels', '').split(';')
+    ignored_submodels = rospy.get_param('~ignore_submodels_of', '').split(';')
     srdf2moveit.ignored_submodels = ignored_submodels
     rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
