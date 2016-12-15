@@ -18,7 +18,7 @@ from tf.transformations import *
 import pysdf
 from gazebo2rviz import *
 
-class Srdf2moveit(object):
+class Sdf2moveit(object):
     def __init__(self):
         self.ignored_submodels = []
         self.collision_objects = {}
@@ -239,15 +239,14 @@ def main():
 
     rospy.init_node('sdf2moveit_collision')
 
-    global srdf2moveit
-    srdf2moveit = Srdf2moveit()
+    sdf2moveit = Sdf2moveit()
 
     ignored_submodels = rospy.get_param('~ignore_submodels_of', '').split(';')
-    srdf2moveit.ignored_submodels = ignored_submodels
+    sdf2moveit.ignored_submodels = ignored_submodels
     rospy.loginfo('Ignoring submodels of: %s' % ignored_submodels)
 
     model_name = args.sdf
-    srdf2moveit.add_new_collision_object(model_name, model_name)
+    sdf2moveit.add_new_collision_object(model_name, model_name)
 
 if __name__ == '__main__':
     main()
