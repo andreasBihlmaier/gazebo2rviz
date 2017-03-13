@@ -4,7 +4,12 @@ Publish all collision elements within a SDF file as MoveIt CollisionObjects
 """
 
 import argparse
-from pyassimp import pyassimp
+import os
+try:
+  from pyassimp import pyassimp
+except:
+  # support pyassimp > 3.0
+  import pyassimp
 
 import rospy
 #from visualization_msgs.msg import Marker
@@ -26,18 +31,32 @@ collision_objects = {}
 def make_mesh(co, name, pose, filename, scale = (1, 1, 1)):
     #print("make_mesh(name=%s filename=%s)" % (name, filename))
     scene = pyassimp.load(filename)
-    if not scene.meshes:
+    if not scene.meshes or len(scene.meshes) == 0:
         raise MoveItCommanderException("There are no meshes in the file")
+    if len(scene.meshes[0].faces) == 0:
+        raise MoveItCommanderException("There are no faces in the mesh")
     co.operation = CollisionObject.ADD
     co.id = name
     co.header = pose.header
-    
+
     mesh = Mesh()
-    for face in scene.meshes[0].faces:
-        triangle = MeshTriangle()
-        if len(face.indices) == 3:
-            triangle.vertex_indices = [face.indices[0], face.indices[1], face.indices[2]]
-        mesh.triangles.append(triangle)
+    first_face = scene.meshes[0].faces[0]
+    if hasattr(first_face, '__len__'):
+        for face in scene.meshes[0].faces:
+            if len(face) == 3:
+                triangle = MeshTriangle()
+                triangle.vertex_indices = [face[0], face[1], face[2]]
+                mesh.triangles.append(triangle)
+    elif hasattr(first_face, 'indices'):
+        for face in scene.meshes[0].faces:
+            if len(face.indices) == 3:
+                triangle = MeshTriangle()
+                triangle.vertex_indices = [face.indices[0],
+                                           face.indices[1],
+                                           face.indices[2]]
+                mesh.triangles.append(triangle)
+    else:
+        raise MoveItCommanderException("Unable to build triangles from mesh due to mesh object structure")
     for vertex in scene.meshes[0].vertices:
         point = Point()
         point.x = vertex[0]*scale[0]
@@ -105,10 +124,17 @@ def link_to_collision_object(link, full_linkname):
 
       if linkpart.geometry_type == 'mesh':
         scale = tuple(float(val) for val in linkpart.geometry_data['scale'].split())
-        mesh_path = linkpart.geometry_data['uri'].replace('model://', pysdf.models_path)
-        link_pose_stamped = PoseStamped()
-        link_pose_stamped.pose = link_pose_in_root_frame
-        make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
+        for models_path in pysdf.models_paths:
+          test_mesh_path = linkpart.geometry_data['uri'].replace('model://', models_path)
+          if os.path.isfile(test_mesh_path):
+            mesh_path = test_mesh_path
+            break
+        if mesh_path:
+          link_pose_stamped = PoseStamped()
+          link_pose_stamped.pose = link_pose_in_root_frame
+          make_mesh(collision_object, full_linkname, link_pose_stamped, mesh_path, scale)
+        else:
+          print("ERROR: No mesh found for '%s' in element '%s'." % (linkpart.geometry_data['uri'], full_linkname))
       elif linkpart.geometry_type == 'box':
         scale = tuple(float(val) for val in linkpart.geometry_data['size'].split())
         box = SolidPrimitive()
