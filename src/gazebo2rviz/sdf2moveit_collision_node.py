@@ -4,7 +4,13 @@ Publish all collision elements within a SDF file as MoveIt CollisionObjects
 """
 
 import argparse
-from pyassimp import pyassimp
+import os
+try:
+  from pyassimp import pyassimp
+except:
+  # support pyassimp > 3.0
+  import pyassimp
+
 from pyassimp.errors import AssimpError
 import os.path
 
@@ -40,15 +46,29 @@ class Sdf2moveit(object):
         except AssimpError as e:
             rospy.logerr("Assimp error: %s", e)
             return False
-        if not scene.meshes:
+        if not scene.meshes or len(scene.meshes) == 0:
             raise MoveItCommanderException("There are no meshes in the file")
+        if len(scene.meshes[0].faces) == 0:
+            raise MoveItCommanderException("There are no faces in the mesh")
 
         mesh = Mesh()
-        for face in scene.meshes[0].faces:
-            triangle = MeshTriangle()
-            if len(face.indices) == 3:
-                triangle.vertex_indices = [face.indices[0], face.indices[1], face.indices[2]]
-            mesh.triangles.append(triangle)
+        first_face = scene.meshes[0].faces[0]
+        if hasattr(first_face, '__len__'):
+            for face in scene.meshes[0].faces:
+                if len(face) == 3:
+                    triangle = MeshTriangle()
+                    triangle.vertex_indices = [face[0], face[1], face[2]]
+                    mesh.triangles.append(triangle)
+        elif hasattr(first_face, 'indices'):
+            for face in scene.meshes[0].faces:
+                if len(face.indices) == 3:
+                    triangle = MeshTriangle()
+                    triangle.vertex_indices = [face.indices[0],
+                                               face.indices[1],
+                                               face.indices[2]]
+                    mesh.triangles.append(triangle)
+        else:
+            raise MoveItCommanderException("Unable to build triangles from mesh due to mesh object structure")
         for vertex in scene.meshes[0].vertices:
             point = Point()
             point.x = vertex[0] * scale[0]
