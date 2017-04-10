@@ -18,6 +18,12 @@ updatePeriod = 0.05
 model_cache = {}
 
 
+def is_ignored(link_name):
+  for ignored_submodel in submodelsToBeIgnored:
+    if link_name.startswith(ignored_submodel + '::'):
+      return True
+  return False
+
 
 def on_link_states_msg(link_states_msg):
   """
@@ -44,9 +50,9 @@ def on_link_states_msg(link_states_msg):
       sdf = pysdf.SDF(model=model_name)
       model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
       if model_cache[model_name]:
-        print('Loaded model: %s' % model_cache[model_name].name)
+        rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
       else:
-        print('Unable to load model: %s' % model_name)
+        rospy.loginfo('Unable to load model: %s' % model_name)
     model = model_cache[model_name]
     link_name_in_model = link_name.replace(modelinstance_name + '::', '')
     if model:
@@ -61,6 +67,9 @@ def on_link_states_msg(link_states_msg):
     else: # Not an SDF model
         parentinstance_link_name = 'gazebo_world'
     #print('parentinstance:', parentinstance_link_name)
+    if is_ignored(parentinstance_link_name):
+      rospy.loginfo("Ignoring TF %s -> %s" % (parentinstance_link_name, link_name))
+      continue
     pose = poses[link_name]
     parent_pose = poses[parentinstance_link_name]
     rel_tf = concatenate_matrices(inverse_matrix(parent_pose), pose)

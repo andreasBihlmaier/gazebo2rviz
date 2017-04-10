@@ -48,9 +48,9 @@ def on_model_states_msg(model_states_msg):
       sdf = pysdf.SDF(model=model_name)
       model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
       if model_cache[model_name]:
-        print('Loaded model: %s' % model_cache[model_name].name)
+        rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
       else:
-        print('Unable to load model: %s' % model_name)
+        rospy.loginfo('Unable to load model: %s' % model_name)
     model = model_cache[model_name]
     if not model: # Not an SDF model
       continue
@@ -69,6 +69,8 @@ def main():
   global submodelsToBeIgnored
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
+  if submodelsToBeIgnored:
+    rospy.logerror('ignore_submodels_of is currently not supported and will thus have no effect')
 
 
   global updatePeriod
