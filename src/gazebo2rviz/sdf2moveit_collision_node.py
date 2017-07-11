@@ -35,7 +35,13 @@ class Sdf2moveit(object):
         while self.planning_scene_pub.get_num_connections() < 1:
             rospy.sleep(0.1)
 
-        rospy.wait_for_service('/get_planning_scene', 10.0)
+        timeout = rospy.get_param('~timeout', 0)
+        if timeout <= 0:
+            timeout = None
+        rospy.loginfo('Waiting {} for /get_planning_scene service to be advertised.'.format(
+                      '{} seconds'.format(timeout) if timeout else 'indefinitely'))
+        rospy.wait_for_service('/get_planning_scene', timeout)
+        rospy.loginfo('/get_planning_scene service has been advertised, proceeding.')
         self.get_planning_scene = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)
         self.request = PlanningSceneComponents(components=PlanningSceneComponents.WORLD_OBJECT_NAMES)
 
