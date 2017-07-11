@@ -1,8 +1,10 @@
 <launch>
   <arg name="frequency" default="2" />
   <arg name="ignore_submodels_of" default="" />
+  <arg name="timeout" default="0" />
 
   <node name="gazebo2moveit" pkg="gazebo2rviz" type="gazebo2moveit_collision_node.py" args="-f $(arg frequency)" output="screen">
     <param name="ignore_submodels_of" value="$(arg ignore_submodels_of)" type="str" />
+    <param name="timeout" value="$(arg timeout)" type="int" />
   </node>
 </launch>
