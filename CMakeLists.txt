@@ -28,11 +28,11 @@ include_directories(
 ## Install ##
 #############
 install(PROGRAMS
-  scripts/gazebo2tf_node.py
-  scripts/gazebo2marker_node.py
-  scripts/sdf2marker_node.py
-  scripts/sdf2tfstatic_node.py
-  scripts/sdf2extract_tfstatic_node.py
+  src/gazebo2rviz/gazebo2tf_node.py
+  src/gazebo2rviz/gazebo2marker_node.py
+  src/gazebo2rviz/sdf2marker_node.py
+  src/gazebo2rviz/sdf2tfstatic_node.py
+  src/gazebo2rviz/sdf2extract_tfstatic_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
