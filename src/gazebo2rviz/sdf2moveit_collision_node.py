@@ -100,6 +100,7 @@ class Sdf2moveit(object):
         return False
 
     def link_to_collision_object(self, link, full_linkname):
+        mesh_path = None
         supported_geometry_types = ['mesh', 'cylinder', 'sphere', 'box']
         linkparts = getattr(link, 'collisions')
         if self.is_ignored(link.parent_model):
@@ -121,7 +122,7 @@ class Sdf2moveit(object):
                     if os.path.isfile(resource):
                         mesh_path = resource
                         break
-                if mesh_path:
+                if mesh_path is not None:
                     link_pose_stamped = PoseStamped()
                     link_pose_stamped.pose = pysdf.homogeneous2pose_msg(linkpart.pose)
                     if not self.make_mesh(collision_object, link_pose_stamped, mesh_path, scale):
