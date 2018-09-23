@@ -12,7 +12,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES gazebo2rviz
   CATKIN_DEPENDS rospy pysdf
-  DEPENDS python-rospkg
+  #  DEPENDS python-rospkg
 )
 
 
