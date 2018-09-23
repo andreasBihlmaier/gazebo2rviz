@@ -70,7 +70,7 @@ def main():
   submodelsToBeIgnored = rospy.get_param('~ignore_submodels_of', '').split(';')
   rospy.loginfo('Ignoring submodels of: ' + str(submodelsToBeIgnored))
   if submodelsToBeIgnored:
-    rospy.logerror('ignore_submodels_of is currently not supported and will thus have no effect')
+    rospy.logerr('ignore_submodels_of is currently not supported and will thus have no effect')
 
 
   global updatePeriod
@@ -80,7 +80,7 @@ def main():
   use_collision = args.collision
 
   global markerPub
-  markerPub = rospy.Publisher('/visualization_marker', Marker)
+  markerPub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
   rospy.sleep(rospy.Duration(0, 100 * 1000))
 
   global lastUpdateTime
