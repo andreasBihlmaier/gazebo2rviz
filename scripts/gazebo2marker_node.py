@@ -20,6 +20,7 @@ markerPub = None
 world = None
 model_cache = {}
 lastUpdateTime = None
+worldsdf = None
 
 
 
@@ -45,8 +46,16 @@ def on_model_states_msg(model_states_msg):
     model_name = pysdf.name2modelname(modelinstance_name)
     #print('model_name:', model_name)
     if not model_name in model_cache:
-      sdf = pysdf.SDF(model=model_name)
-      model_cache[model_name] = sdf.world.models[0] if len(sdf.world.models) >= 1 else None
+      model_cache[model_name] = None
+      if worldsdf:
+        for model in worldsdf.world.models:
+          if model.name == model_name:
+            model_cache[model_name] = model
+            break
+      else:
+        sdf = pysdf.SDF(model=model_name)
+        if len(sdf.world.models) >= 1:
+          model_cache[model_name] = sdf.world.models[0]
       if model_cache[model_name]:
         rospy.loginfo('Loaded model: %s' % model_cache[model_name].name)
       else:
@@ -62,6 +71,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('-f', '--freq', type=float, default=2, help='Frequency Markers are published (default: 2 Hz)')
   parser.add_argument('-c', '--collision', action='store_true', help='Publish collision instead of visual elements')
+  parser.add_argument('-w', '--worldfile', type=str, help='Read models from this world file')
   args = parser.parse_args(rospy.myargv()[1:])
 
   rospy.init_node('gazebo2marker')
@@ -78,6 +88,10 @@ def main():
 
   global use_collision
   use_collision = args.collision
+
+  if args.worldfile:
+    global worldsdf
+    worldsdf = pysdf.SDF(file=args.worldfile)
 
   global markerPub
   markerPub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
