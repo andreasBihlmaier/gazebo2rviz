@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Publish specific transform between two links within a SDF file as 'static' tf transformation (with different name)
 """

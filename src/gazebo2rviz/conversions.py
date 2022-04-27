@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import copy
 
 import rospy
@@ -68,7 +66,7 @@ def link2marker_msg(link, full_linkname, use_collision = False, lifetime = rospy
             mesh_path = os.path.join(package_path, uri_parts[1])
             if os.path.isfile(mesh_path):
               marker_msg.mesh_resource = 'file://' + mesh_path
-          except ResourceNotFound, e:
+          except ResourceNotFound as e:
             pass
 
       if not marker_msg.mesh_resource:

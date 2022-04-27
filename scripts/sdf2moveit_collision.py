@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Publish all collision elements within a SDF file as MoveIt CollisionObjects
 """
